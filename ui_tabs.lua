@@ -22,7 +22,7 @@ function tab_radar(data, mtos)
         local rem_nm = rem_ap and ("[" .. rem_ap.id .. "] " .. rem_ap.name) or "?"
         table.insert(fs, string.format(
             "box[%.2f,%.2f;%.2f,0.28;#220022]label[%.2f,%.2f;%s]",
-            RX, RY - 0.32, RW, RX + 0.1, RY - 0.28,
+            RX, RY - 0.32, RW, RX + 0.1, RY - 0.00,
             clr("#FF88FF", "⊕ Distant: " .. rem_nm)))
     end
 
@@ -204,7 +204,12 @@ function tab_radar(data, mtos)
             else
                 astr = ac .. " min"
             end
-            table.insert(rows, "Autonomie: " .. clr(acolor, astr)
+            -- Distance estimée = vitesse actuelle (m/s) × autonomie en secondes
+            local dist_km = math.floor(p.spd_ms * ac * 60 / 1000 + 0.5)
+            local dist_str = p.spd_ms > 0.5
+                and string.format(" ~%dkm", dist_km)
+                or " (à l'arrêt)"
+            table.insert(rows, "Autonomie: " .. clr(acolor, astr .. dist_str)
                 .. " (gaz " .. p.throttle .. "%)")
         elseif p.model == "PA-28" and p.throttle and p.throttle == 0 then
             table.insert(rows, clr("#888888", "Autonomie: moteur coupé"))
@@ -350,17 +355,17 @@ function tab_myairport(data, mtos)
             py, fe(clr("#FFAA00", "⟵ Revenir à cet aéroport lié"))))
         py = py + 0.58
     elseif data.myap_ctrl_mode == viewing then
-        table.insert(fs, string.format("box[0.20,%.2f;9.0,1.55;#110022]", py))
-        table.insert(fs, string.format("label[0.40,%.2f;%s]", py + 0.10,
+        table.insert(fs, string.format("box[0.20,%.2f;9.0,2.70;#110022]", py))
+        table.insert(fs, string.format("label[0.50,%.2f;%s]", py + 0.02,
             clr("#CC88FF", "Mot de passe requis pour prendre le contrôle de [" .. viewing .. "] :")))
-        table.insert(fs, string.format("pwdfield[0.40,%.2f;5.5,0.62;ctrl_pw;Mot de passe]", py + 0.50))
-        table.insert(fs, string.format("button[6.10,%.2f;2.7,0.62;ctrl_confirm;Confirmer]", py + 0.50))
-        table.insert(fs, string.format("button[0.40,%.2f;2.5,0.50;ctrl_cancel;Annuler]", py + 1.22))
+        table.insert(fs, string.format("pwdfield[0.65,%.2f;5.5,0.80;ctrl_pw;Mot de passe]", py + 1.10))
+        table.insert(fs, string.format("button[5.85,%.2f;2.7,0.62;ctrl_confirm;Confirmer]", py + 0.86))
+        table.insert(fs, string.format("button[0.40,%.2f;2.5,0.50;ctrl_cancel;Annuler]", py + 1.85))
         if data.myap_ctrl_err then
-            table.insert(fs, string.format("label[3.10,%.2f;%s]", py + 1.25,
+            table.insert(fs, string.format("label[3.10,%.2f;%s]", py + 1.75,
                 clr("#FF4444", data.myap_ctrl_err)))
         end
-        py = py + 1.72
+        py = py + 2.72
     else
         table.insert(fs, string.format("button[0.20,%.2f;6.0,0.50;ctrl_request;%s]",
             py, fe(clr("#88FFFF", "⊕ Prendre le contrôle de [" .. viewing .. "]"))))
@@ -502,12 +507,13 @@ function tab_atc(data, mtos)
             local ap_disp_req = ap_obj_req and (ap_obj_req.name .. " [" .. req.airport .. "]") or (req.airport or "?")
 
             local age_str = age < 60 and (age .. "s") or (math.floor(age / 60) .. "min " .. age % 60 .. "s")
-            -- Ligne unique : [n]★ joueur (modèle) → Aéroport (demande) il y a Xs
-            table.insert(fs, string.format("box[0,%.2f;%.2f,0.38;%s]", rpy, CFG.X_MAX, bg))
-            table.insert(fs, string.format("label[0.20,%.2f;%s]", rpy + 0.06,
-                clr(fg, string.format("[%d]%s %s (%s) → %s  |  %s  |  il y a %s",
+            -- Ligne unique : [n]★ joueur (modèle) → NomAéroport [ID] | demande | il y a Xs
+            -- fe() obligatoire car la ligne contient des [ qui casseraient le formspec
+            table.insert(fs, string.format("box[0,%.2f;%.2f,0.50;%s]", rpy, CFG.X_MAX, bg))
+            table.insert(fs, string.format("label[0.20,%.2f;%s]", rpy + 0.00,
+                fe(string.format("[%d]%s %s (%s) → %s  |  %s  |  il y a %s",
                     ri, stat, req.player, req.model or "?", ap_disp_req, det, age_str))))
-            rpy = rpy + 0.42
+            rpy = rpy + 0.95
 
             if req.req_type == "landing" or req.req_type == "takeoff" then
                 local ap  = linked and find_ap(linked)
@@ -521,7 +527,7 @@ function tab_atc(data, mtos)
                         for _, pn in ipairs(parts) do
                             if bx + 2.8 > CFG.X_MAX then break end
                             table.insert(fs, string.format(
-                                "button[%.2f,%.2f;2.7,0.46;atc_rw_%d_%d_%s;%s]",
+                                "button[%.2f,%.2f;1.7,0.00;atc_rw_%d_%d_%s;%s]",
                                 bx, rpy, ri, rwi, pn, fe(clr("#00FF88", "✔ " .. verb .. " " .. pn))))
                             bx = bx + 2.8
                         end
@@ -535,13 +541,13 @@ function tab_atc(data, mtos)
                 end
             elseif req.req_type == "flyover" then
                 local alt_v = req.alt or 500
-                table.insert(fs, string.format("label[0.20,%.2f;Alt.(m):]", rpy + 0.08))
-                table.insert(fs, string.format("field[2.20,%.2f;2.8,0.50;atc_alt_%d;;%s]",
+                table.insert(fs, string.format("label[0.20,%.2f;Alt.(m):]", rpy - 0.20))
+                table.insert(fs, string.format("field[2.20,%.2f;2.8,0.90;atc_alt_%d;;%s]",
                     rpy, ri, fe(tostring(alt_v))))
-                table.insert(fs, string.format("button[5.20,%.2f;1.5,0.50;atc_alt_set_%d;Set]", rpy, ri))
-                table.insert(fs, string.format("button[6.90,%.2f;3.0,0.50;atc_auth_%d;%s]",
+                table.insert(fs, string.format("button[5.20,%.2f;1.5,0.20;atc_alt_set_%d;Set]", rpy, ri))
+                table.insert(fs, string.format("button[6.90,%.2f;3.0,0.20;atc_auth_%d;%s]",
                     rpy, ri, fe(clr("#00FF88", "✔ Autorisé"))))
-                rpy = rpy + 0.56
+                rpy = rpy + 0.90
             elseif req.req_type == "approach" then
                 local ap  = linked and find_ap(linked)
                 local rws = ap and ap.runways or {}
@@ -561,17 +567,17 @@ function tab_atc(data, mtos)
             end
 
             -- Boutons communs
-            table.insert(fs, string.format("button[0.10,%.2f;2.7,0.44;atc_ref_%d;%s]",
+            table.insert(fs, string.format("button[0.10,%.2f;2.7,0.35;atc_ref_%d;%s]",
                 rpy, ri, fe(clr("#FF4444", "✕ Refusé"))))
             if req.status == "hold" then
                 table.insert(fs, string.format("style[atc_hold_%d;bgcolor=#333333;textcolor=#666666]", ri))
-                table.insert(fs, string.format("button[2.90,%.2f;3.3,0.44;atc_hold_%d;%s]",
+                table.insert(fs, string.format("button[2.90,%.2f;3.3,0.35;atc_hold_%d;%s]",
                     rpy, ri, fe("⏸ En attente")))
             else
-                table.insert(fs, string.format("button[2.90,%.2f;3.3,0.44;atc_hold_%d;%s]",
+                table.insert(fs, string.format("button[2.90,%.2f;3.3,0.35;atc_hold_%d;%s]",
                     rpy, ri, fe(clr("#FFAA00", "⏸ Attente"))))
             end
-            table.insert(fs, string.format("button[6.30,%.2f;2.7,0.44;atc_del_%d;%s]",
+            table.insert(fs, string.format("button[6.30,%.2f;2.7,0.35;atc_del_%d;%s]",
                 rpy, ri, fe(clr("#666666", "✕ Suppr."))))
             rpy = rpy + 0.50
             table.insert(fs, string.format("box[0,%.2f;%.2f,0.03;#333333]", rpy, CFG.X_MAX))
@@ -589,7 +595,7 @@ function tab_atc(data, mtos)
         local LW = 4.20; local CX = 4.50; local CW = CFG.X_MAX - CX
 
         table.insert(fs, string.format("box[0,%.2f;%.2f,0.38;#002233]", py, LW))
-        table.insert(fs, string.format("label[0.10,%.2f;%s]", py - 0.06, clr("#88CCFF", "Discussions")))
+        table.insert(fs, string.format("label[0.10,%.2f;%s]", py - 0.02, clr("#88CCFF", "Discussions")))
         local lpy = py + 0.44
 
         for ci, conv in ipairs(convs) do
@@ -597,26 +603,26 @@ function tab_atc(data, mtos)
             local act = (data.radio_sel == ci)
             table.insert(fs, string.format("box[0,%.2f;%.2f,0.44;%s]",
                 lpy, LW, act and "#003344" or "#001122"))
-            table.insert(fs, string.format("button[0,%.2f;%.2f,0.44;radio_sel_%d;%s]",
+            table.insert(fs, string.format("button[0,%.2f;%.2f,0.75;radio_sel_%d;%s]",
                 lpy, LW, ci, fe(clr(act and "#FFFFFF" or "#88CCFF",
                     (conv.pilot or "?"):sub(1, 14) .. " (" .. #(conv.messages or {}) .. ")"))))
-            lpy = lpy + 0.46
+            lpy = lpy + 0.65
         end
         if lpy + 0.44 <= CFG.Y_MAX then
             table.insert(fs, string.format("box[0,%.2f;%.2f,0.44;#001a22]", lpy, LW))
-            table.insert(fs, string.format("button[0,%.2f;%.2f,0.44;radio_new;%s]",
+            table.insert(fs, string.format("button[0,%.2f;%.2f,1.00;radio_new;%s]",
                 lpy, LW, fe(clr("#44FFCC", "+ Contacter pilote"))))
         end
 
         if data.radio_new_mode then
-            table.insert(fs, string.format("box[%.2f,%.2f;%.2f,1.48;#001122]", CX, py, CW))
-            table.insert(fs, string.format("label[%.2f,%.2f;Nom du pilote :]", CX + 0.15, py + 0.10))
+            table.insert(fs, string.format("box[%.2f,%.2f;%.2f,1.00;#001122]", CX, py, CW))
+            table.insert(fs, string.format("label[%.2f,%.2f;Nom du pilote :]", CX + 0.15, py + 0.00))
             table.insert(fs, string.format("field[%.2f,%.2f;%.2f,0.60;radio_new_target;;%s]",
-                CX + 0.15, py + 0.42, CW - 0.30, fe(data.radio_new_target or "")))
+                CX + 0.35, py + 0.9, CW - 0.30, fe(data.radio_new_target or "")))
             table.insert(fs, string.format("button[%.2f,%.2f;3.5,0.50;radio_new_open;%s]",
-                CX + 0.15, py + 1.0, fe(clr("#44FFCC", "Ouvrir discussion"))))
+                CX + 0.15, py + 1.5, fe(clr("#44FFCC", "Ouvrir discussion"))))
             table.insert(fs, string.format("button[%.2f,%.2f;2.5,0.50;radio_new_cancel;Annuler]",
-                CX + 3.8, py + 1.0))
+                CX + 3.8, py + 1.5))
             return table.concat(fs)
         end
 
@@ -649,11 +655,18 @@ function tab_atc(data, mtos)
             local who  = m.from == "atc" and "ATC" or (m.from or "?")
             local mc   = m.from == "atc" and "#DD99FF" or "#66CCFF"
             local tstr = os.date("%H:%M", m.time or 0)
-            -- Construire sans fe() pour ne pas écraser les balises de couleur
-            local line = string.format("[%s] %s: %s", tstr, who, m.text or "")
+            -- Pas de [ dans tstr (format HH:MM), mais m.text peut en contenir
+            -- On n'utilise PAS minetest.colorize ici car il génère des séquences
+            -- échappées incompatibles avec fe(). On affiche en blanc sans couleur.
+            local line = string.format("%s %s: %s", tstr, who, m.text or "")
             if #line > 63 then line = line:sub(1, 60) .. ".." end
-            table.insert(fs, string.format("label[%.2f,%.2f;%s]",
-                CX + 0.15, lmy, minetest.colorize(mc, line)))
+            -- Préfixe couleur manuel : couleur du nom d'expéditeur seulement
+            local prefix = string.format("%s %s: ", tstr, who)
+            local body   = (m.text or ""):sub(1, 63 - #prefix)
+            table.insert(fs, string.format("label[%.2f,%.2f;%s%s]",
+                CX + 0.15, lmy,
+                minetest.colorize(mc, fe(prefix)),
+                fe(body)))
             lmy = lmy + msg_h
         end
         py = py + hist_h + 0.05
@@ -678,7 +691,7 @@ function tab_admin(data, mtos)
         table.insert(fs, string.format("box[0,%.2f;10,3.40;#110011]", py))
         table.insert(fs, string.format("label[0.30,%.2f;%s]", py + 0.05,
             clr("#CC88CC", "Administration — Mot de passe requis")))
-        table.insert(fs, string.format("pwdfield[0.30,%.2f;6.0,0.62;admin_pw;Mot de passe]", py + 1.30))
+        table.insert(fs, string.format("pwdfield[0.60,%.2f;6.0,0.62;admin_pw;Mot de passe]", py + 1.30))
         table.insert(fs, string.format("button[0.30,%.2f;3.5,0.62;admin_login;Déverrouiller]", py + 1.85))
         if data.admin_err then
             table.insert(fs, string.format("label[0.30,%.2f;%s]", py + 2.60,
@@ -695,11 +708,11 @@ function tab_admin(data, mtos)
         table.insert(fs, string.format("box[0,%.2f;%.2f,0.46;#002244]", py, CFG.X_MAX))
         table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.00, clr("#88CCFF", "Aéroports enregistrés")))
         table.insert(fs, string.format("button[11.2,%.2f;3.4,0.38;new_ap;+ Nouvel aéroport]", py + 0.04))
-        py = py + 0.52
+        py = py + 0.65
         if #airports == 0 then
             table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#888888", "Aucun aéroport.")))
         else
-            local item_h = 0.50
+            local item_h = 0.70
             local avail  = CFG.Y_MAX - py
             local need_scroll = (#airports * item_h > avail)
             local list_h = math.min(#airports * item_h, avail)
@@ -708,8 +721,8 @@ function tab_admin(data, mtos)
                 local nrw = ap.runways and #ap.runways or 0
                 local bpy = need_scroll and (i - 1) * item_h or py
                 table.insert(fs, string.format("box[0,%.2f;%.2f,%.2f;#001122]", bpy, CFG.X_MAX, item_h))
-                table.insert(fs, string.format("label[0.20,%.2f;[%s] %s — %d piste%s]",
-                    bpy + 0.00, ap.id, ap.name, nrw, nrw > 1 and "s" or ""))
+                table.insert(fs, string.format("label[0.20,%.2f;%s]",
+                    bpy + 0.00, fe(string.format("[%s] %s — %d piste%s", ap.id, ap.name, nrw, nrw > 1 and "s" or ""))))
                 table.insert(fs, string.format("button[10.40,%.2f;2.0,0.38;ap_rw_%d;Pistes →]", bpy + 0.06, i))
                 table.insert(fs, string.format("button[12.50,%.2f;2.1,0.38;ap_del_%d;%s]",
                     bpy + 0.06, i, fe(clr("#FF6666", "✕ Suppr."))))

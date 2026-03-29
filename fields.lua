@@ -49,38 +49,39 @@ function do_fields(app, mtos, sender, fields)
 
     -- ===== AÉROPORTS =====
     if data.tab == "myap" then
-        -- S'assurer que myap_view est initialisé (peut être nil si dropdown jamais touché)
+        -- Initialiser myap_view si absent
         if not data.myap_view then
             local airports = get_airports()
             local linked_id = data.linked_airport
             data.myap_view = linked_id or (airports[1] and airports[1].id)
-            -- Préférer un aéroport différent du lié pour que le bouton "prendre contrôle" soit visible
-            if linked_id then
-                for _, a in ipairs(airports) do
-                    if a.id ~= linked_id then data.myap_view = a.id; break end
-                end
-            end
         end
 
-        if fields.myap_sel then
-            local raw = fields.myap_sel or ""
-            local nv  = raw:match("^([A-Z0-9]+)") or raw
-            if nv ~= data.myap_view then
-                data.myap_ctrl_mode = nil
-                data.myap_ctrl_err  = nil
-            end
-            data.myap_view = nv
-            return true
-        end
+        -- IMPORTANT : traiter les actions de contrôle EN PREMIER,
+        -- avant myap_sel qui fait return true et coupe le traitement.
+        -- Minetest envoie TOUS les fields en même temps, donc si on
+        -- traite myap_sel en premier avec return true, ctrl_request
+        -- n'est jamais vu.
+
         if fields.ctrl_request then
+            -- Ouvre le formulaire mot de passe pour l'aéroport affiché
+            -- Mettre à jour myap_view depuis le dropdown s'il est envoyé simultanément
+            if fields.myap_sel then
+                local raw = fields.myap_sel or ""
+                local nv  = raw:match("^([A-Z0-9%-]+)") or raw:match("^(.-)%s*%—") or raw:sub(1,6)
+                nv = nv:match("^%s*(.-)%s*$")  -- trim
+                if nv ~= "" then data.myap_view = nv:upper() end
+            end
             data.myap_ctrl_mode = data.myap_view
             data.myap_ctrl_err  = nil
             return true
         end
+
         if fields.ctrl_cancel then
-            data.myap_ctrl_mode = nil; data.myap_ctrl_err = nil
+            data.myap_ctrl_mode = nil
+            data.myap_ctrl_err  = nil
             return true
         end
+
         if fields.ctrl_confirm then
             if fields.ctrl_pw == CFG.radar_password_remote then
                 local view = data.myap_ctrl_mode
@@ -89,25 +90,41 @@ function do_fields(app, mtos, sender, fields)
                     data.active_airport = view
                     data.remote_center  = {x=ap.pos.x, y=ap.pos.y, z=ap.pos.z}
                     active_nodes[pk(mtos.pos)] = {
-                        pos = {x=mtos.pos.x, y=mtos.pos.y, z=mtos.pos.z},
+                        pos        = {x=mtos.pos.x, y=mtos.pos.y, z=mtos.pos.z},
                         airport_id = view,
                     }
                 end
-                data.myap_ctrl_mode = nil; data.myap_ctrl_err = nil
+                data.myap_ctrl_mode = nil
+                data.myap_ctrl_err  = nil
                 data.tab = "radar"
             else
                 data.myap_ctrl_err = "Mot de passe incorrect."
             end
             return true
         end
+
         if fields.ctrl_return then
             data.active_airport = data.linked_airport
             data.remote_center  = nil
             active_nodes[pk(mtos.pos)] = {
-                pos = {x=mtos.pos.x, y=mtos.pos.y, z=mtos.pos.z},
+                pos        = {x=mtos.pos.x, y=mtos.pos.y, z=mtos.pos.z},
                 airport_id = data.linked_airport,
             }
             data.tab = "radar"
+            return true
+        end
+
+        -- Changement de dropdown (traité en dernier dans ce bloc)
+        if fields.myap_sel then
+            local raw = fields.myap_sel or ""
+            -- Le dropdown envoie "LFPG — Nom..." : extraire l'ID avant " — "
+            local nv = raw:match("^([A-Z0-9%-]+)") or raw:match("^(.-)%s*%—") or raw:sub(1,6)
+            nv = nv:match("^%s*(.-)%s*$"):upper()
+            if nv ~= data.myap_view then
+                data.myap_ctrl_mode = nil
+                data.myap_ctrl_err  = nil
+            end
+            data.myap_view = nv
             return true
         end
     end
@@ -232,11 +249,8 @@ function do_fields(app, mtos, sender, fields)
         local reqs  = state.requests or {}
         local convs = state.conversations or {}
 
-        -- Helper : préfixe ATC avec nom complet
-        local linked_ap_obj = linked and find_ap(linked)
-        local atc_prefix = linked_ap_obj
-            and ("[ATC " .. linked_ap_obj.name .. " (" .. linked .. ")]")
-            or ("[ATC " .. (linked or "?") .. "]")
+        -- Helper : préfixe ATC court pour les messages chat joueurs
+        local atc_prefix = "[ATC " .. (linked or "?") .. "]"
 
         -- Requêtes
         for ri = 1, #reqs do

@@ -94,7 +94,9 @@ laptop.register_app("radar_atc", {
         if old_sel then
             data.selected = 0
             for i, p in ipairs(data.planes) do
-                if p.model == old_sel.model and p.owner == old_sel.owner then
+                -- Priorité à obj_id (unique), fallback sur model+owner pour compatibilité
+                if (old_sel.obj_id and p.obj_id == old_sel.obj_id)
+                   or (not old_sel.obj_id and p.model == old_sel.model and p.owner == old_sel.owner) then
                     data.selected = i; break
                 end
             end
