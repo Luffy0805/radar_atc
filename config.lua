@@ -7,9 +7,11 @@ local function setting(key, default)
     return (v and v ~= "") and v or default
 end
 
+
+
 CFG = {
-    password_admin  = setting("password_admin",  "maverick"),
-    password_remote = setting("password_remote", "rafale"),
+    radar_password_admin  = "admin",
+    radar_password_remote = "airport",
     timer_interval  = 3,
     airport_link_r  = 500,
     trail_len       = 5,
