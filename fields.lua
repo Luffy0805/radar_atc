@@ -82,7 +82,7 @@ function do_fields(app, mtos, sender, fields)
             return true
         end
         if fields.ctrl_confirm then
-            if fields.ctrl_pw == CFG.password_remote then
+            if fields.ctrl_pw == CFG.radar_password_remote then
                 local view = data.myap_ctrl_mode
                 local ap   = find_ap(view)
                 if ap and ap.pos then
@@ -115,7 +115,7 @@ function do_fields(app, mtos, sender, fields)
     -- ===== ADMIN =====
     if data.tab == "admin" then
         if fields.admin_login then
-            if fields.admin_pw == CFG.password_admin then
+            if fields.admin_pw == CFG.radar_password_admin then
                 data.admin_ok = true; data.admin_err = nil; data.av = "list"
             else data.admin_err = "Mot de passe incorrect." end
             return true
