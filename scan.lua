@@ -1,16 +1,50 @@
 -- =============================================================
--- radar_atc/scan.lua  —  Détection et suivi des avions
+-- radar_atc/scan.lua  --  Detection et suivi des avions
 -- =============================================================
 
--- uid basé sur l'ID interne de l'objet Lua :
---   - stable pendant toute la durée de vie de l'entité (ne change pas avec la position)
---   - unique même si deux avions identiques appartiennent au même owner
---   - stocké dans p.obj_id pour la comparaison inter-ticks
+-- uid base sur l'ID interne de l'objet Lua :
+--   - stable pendant toute la duree de vie de l'entite
+--   - unique meme si deux avions identiques ont le meme owner
 local function uid_from_obj(obj)
     if obj.get_id then
         return tostring(obj:get_id())
     end
     return tostring(obj)
+end
+
+-- =============================================================
+--  AUTONOMIE -- formule generique airutils
+--  conso/sec = power_lever / DIVISEUR * 20
+--  autonomie (min) = energy / conso_sec / 60
+--
+--  DIVISEURS par modele (_fuel_consumption_divisor) :
+--    PA-28                 -> 700000  (defaut airutils, non defini dans mod)
+--    Super Cub             -> 700000  (defaut airutils, non defini dans mod)
+--    Super Duck Hydroplane -> 700000  (copie supercub)
+--    Ju 52 3M              -> 500000  (defini dans ju52/init.lua)
+--    Ju52 3M Hydroplane    -> 500000  (copie ju52)
+--    trike                 -> 1200000 (defini dans trike/init.lua)
+--
+--  Pour ajouter un avion : chercher _fuel_consumption_divisor dans
+--  son init.lua. Si absent, utiliser 700000 (defaut airutils).
+-- =============================================================
+local AUTONOMY_DIVISORS = {
+    ["PA-28"]                  = 700000,
+    ["Super Cub"]              = 700000,
+    ["Super Duck Hydroplane"]  = 700000,
+    ["Ju 52 3M"]               = 500000,
+    ["Ju52 3M Hydroplane"]     = 500000,
+    ["trike"]                  = 1200000,
+}
+
+local function calc_autonomy(e)
+    local div = AUTONOMY_DIVISORS[e._vehicle_name]
+    if not div then return nil end
+    if not e._power_lever or e._power_lever <= 0.5 then return nil end
+    if not e._max_fuel or e._max_fuel <= 0 then return nil end
+    if not e._energy or e._energy <= 0 then return nil end
+    local conso_sec = e._power_lever / div * 20
+    return math.floor(e._energy / conso_sec / 60 + 0.5)
 end
 
 local function has_atc_request(player_name, airport_id)
@@ -24,7 +58,6 @@ end
 
 function scan(cpos, radius, old, trails, active_ap)
     trails = trails or {}
-    -- Index des anciennes données par obj_id pour lookup O(1)
     local old_by_id = {}
     if old then
         for _, op in ipairs(old) do
@@ -40,10 +73,10 @@ function scan(cpos, radius, old, trails, active_ap)
             if e and e._vehicle_name then
                 local pilot = (e.driver_name and e.driver_name ~= "") and e.driver_name or nil
                 if pilot or e.isonground == false then
-                    local pos   = obj:get_pos()
-                    local vel   = obj:get_velocity() or {x=0, y=0, z=0}
-                    local sp    = hspd(vel)
-                    local obj_id = uid_from_obj(obj)   -- clé stable unique par entité
+                    local pos    = obj:get_pos()
+                    local vel    = obj:get_velocity() or {x=0, y=0, z=0}
+                    local sp     = hspd(vel)
+                    local obj_id = uid_from_obj(obj)
                     local p = {
                         obj_id   = obj_id,
                         model    = e._vehicle_name,
@@ -61,42 +94,19 @@ function scan(cpos, radius, old, trails, active_ap)
                         energy   = e._energy or 0,
                         max_fuel = e._max_fuel or 0,
                         throttle = e._power_lever and math.floor(e._power_lever + 0.5) or nil,
-                        -- -------------------------------------------------------
-                        -- AUTONOMIE : comment ça marche pour le PA-28
-                        -- -------------------------------------------------------
-                        -- e._energy      = carburant restant (unité interne)
-                        -- e._max_fuel    = capacité maximale (même unité)
-                        -- e._power_lever = position des gaz (0 à 100)
-                        -- Consommation/seconde = power_lever / 700000 * 20
-                        --   (700000 = diviseur du mod airutils pour la PA-28,
-                        --    20 = ticks/seconde approximatif du moteur physique)
-                        -- Pour adapter à un autre avion :
-                        --   1. Trouver son diviseur dans le code airutils
-                        --      (chercher "_energy" et le chiffre qui le divise)
-                        --   2. Remplacer "PA-28" par le nom _vehicle_name de l'avion
-                        --   3. Remplacer 700000 par le diviseur trouvé
-                        -- -------------------------------------------------------
-                        autonomy_min = (e._vehicle_name == "PA-28"
-                                       and e._power_lever and e._power_lever > 0.5
-                                       and e._max_fuel and e._max_fuel > 0
-                                       and e._energy and e._energy > 0)
-                            and math.floor((e._energy / (e._power_lever / 700000 * 20)) / 60 + 0.5)
-                            or nil,
-                        dist    = d2d(cpos, pos),
-                        has_req = (pilot and has_atc_request(pilot, active_ap)) or false,
+                        autonomy_min = calc_autonomy(e),
+                        dist     = d2d(cpos, pos),
+                        has_req  = (pilot and has_atc_request(pilot, active_ap)) or false,
                     }
-                    -- Traînée : ajoute un point seulement si l'avion est en mouvement
                     local src = trails[obj_id] or {}
                     local tr  = {}
                     for i = 1, #src do tr[i] = src[i] end
                     if sp > 0.5 then
-                        -- En mouvement : ajoute la position précédente en tête
                         local op = old_by_id[obj_id]
                         if op then
                             table.insert(tr, 1, {x=op.pos.x, y=op.pos.y, z=op.pos.z})
                         end
                     else
-                        -- À l'arrêt : efface la traînée
                         tr = {}
                     end
                     while #tr > CFG.trail_len do table.remove(tr, #tr) end
