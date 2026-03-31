@@ -61,12 +61,13 @@ function tab_radar(data, mtos)
         if ap.runways then
             for _, rw in ipairs(ap.runways) do
                 if rw.p1 and rw.p2 then
-                    local x1, y1 = w2r(rw.p1, cpos, radius)
-                    local x2, y2 = w2r(rw.p2, cpos, radius)
-                    if x1 or x2 then
-                        x1 = x1 or (x2 and (RW / 2) or nil)
-                        y1 = y1 or (y2 and (RH / 2) or nil)
-                        x2 = x2 or (RW / 2); y2 = y2 or (RH / 2)
+                    -- Teste si au moins une extrémité est dans la portée
+                    local v1x, v1y = w2r(rw.p1, cpos, radius)
+                    local v2x, v2y = w2r(rw.p2, cpos, radius)
+                    if v1x or v2x then
+                        -- Utilise w2r_clamp pour le tracé : clamp sur le BORD (pas le centre)
+                        local x1, y1 = w2r_clamp(rw.p1, cpos, radius)
+                        local x2, y2 = w2r_clamp(rw.p2, cpos, radius)
                         for t = 0, 10 do
                             local f = t / 10
                             local ix = x1 + (x2 - x1) * f; local iy = y1 + (y2 - y1) * f
@@ -75,6 +76,7 @@ function tab_radar(data, mtos)
                                     RX + ix, RY + iy, clr(rw_col, "·")))
                             end
                         end
+                        -- Label centré : utilise le milieu des coords clamped
                         local xm = (x1 + x2) / 2; local ym = (y1 + y2) / 2
                         if xm >= 0.1 and xm <= RW - 0.5 and ym >= 0.1 and ym <= RH - 0.4 then
                             table.insert(fs, string.format("label[%.2f,%.2f;%s]",
@@ -84,11 +86,38 @@ function tab_radar(data, mtos)
                             if xm >= 0.1 and xm <= RW - 0.8 and ym >= 0.1 and ym <= RH - 0.6 then
                                 table.insert(fs, string.format("label[%.2f,%.2f;%s]",
                                     RX + xm, RY + ym - 0.52,
-                                    fe("[" .. ap.id .. "]")))
+                                    minetest.colorize("#888888", fe("[" .. ap.id .. "]"))))
                                 ap_label_drawn[ap.id] = true
                             end
                         end
                     end
+                end
+            end
+        end
+    end
+
+    -- Pistes indépendantes (sans ATC, couleur orange)
+    local strips = get_strips()
+    for _, st in ipairs(strips) do
+        if st.p1 and st.p2 then
+            local v1x, v1y = w2r(st.p1, cpos, radius)
+            local v2x, v2y = w2r(st.p2, cpos, radius)
+            if v1x or v2x then
+                local sx1, sy1 = w2r_clamp(st.p1, cpos, radius)
+                local sx2, sy2 = w2r_clamp(st.p2, cpos, radius)
+                for t = 0, 10 do
+                    local f = t / 10
+                    local ix = sx1 + (sx2 - sx1) * f
+                    local iy = sy1 + (sy2 - sy1) * f
+                    if ix >= 0.02 and ix <= RW - 0.20 and iy >= 0.02 and iy <= RH - 0.20 then
+                        table.insert(fs, string.format("label[%.2f,%.2f;%s]",
+                            RX + ix, RY + iy, clr("#CC8833", "·")))
+                    end
+                end
+                local xm = (sx1 + sx2) / 2; local ym = (sy1 + sy2) / 2
+                if xm >= 0.1 and xm <= RW - 0.5 and ym >= 0.1 and ym <= RH - 0.4 then
+                    table.insert(fs, string.format("label[%.2f,%.2f;%s]",
+                        RX + xm, RY + ym - 0.28, clr("#CC8833", st.name or "?")))
                 end
             end
         end
@@ -157,7 +186,7 @@ function tab_radar(data, mtos)
     local ap_bg  = linked and "#002244" or "#222200"
     table.insert(fs, string.format("box[%.2f,%.2f;%.2f,0.45;%s]", PX, py, PW, ap_bg))
     table.insert(fs, string.format("label[%.2f,%.2f;%s]",
-        PX + 0.12, py + 0.00, fe(ap_lbl)))
+        PX + 0.12, py + 0.00, minetest.colorize(ap_col, fe(ap_lbl))))
     py = py + 0.52
 
     table.insert(fs, string.format("label[%.2f,%.2f;Portée :]", PX, py + 0.10))
@@ -293,13 +322,52 @@ function tab_myairport(data, mtos)
         return table.concat(fs)
     end
 
+    -- Position de référence pour le tri par distance
+    local ref_pos = data.remote_center or data.center_pos or mtos.pos
+
     local ap_ids = {}; local ap_display = {}
-    for _, a in ipairs(airports) do
+    -- Trier les aéroports par distance croissante
+    local sorted_airports = {}
+    for _, a in ipairs(airports) do table.insert(sorted_airports, a) end
+    table.sort(sorted_airports, function(a, b)
+        local da = a.pos and d3d(ref_pos, a.pos) or math.huge
+        local db = b.pos and d3d(ref_pos, b.pos) or math.huge
+        return da < db
+    end)
+    for _, a in ipairs(sorted_airports) do
         table.insert(ap_ids, a.id)
         local disp = a.id .. " — " .. a.name
         if #disp > 30 then disp = disp:sub(1, 28) .. ".." end
         table.insert(ap_display, disp)
     end
+
+    -- Ajouter les pistes indépendantes si elles existent, triées par distance
+    local strips = get_strips()
+    if #strips > 0 then
+        local sorted_strips = {}
+        for i, st in ipairs(strips) do table.insert(sorted_strips, {st=st, idx=i}) end
+        table.sort(sorted_strips, function(a, b)
+            local mid_a = a.st.p1 and {
+                x=(a.st.p1.x+a.st.p2.x)/2, y=(a.st.p1.y+a.st.p2.y)/2, z=(a.st.p1.z+a.st.p2.z)/2}
+            local mid_b = b.st.p1 and {
+                x=(b.st.p1.x+b.st.p2.x)/2, y=(b.st.p1.y+b.st.p2.y)/2, z=(b.st.p1.z+b.st.p2.z)/2}
+            local da = mid_a and d3d(ref_pos, mid_a) or math.huge
+            local db = mid_b and d3d(ref_pos, mid_b) or math.huge
+            return da < db
+        end)
+        -- Séparateur dans le dropdown
+        table.insert(ap_ids, "sep:strips")
+        table.insert(ap_display, "── Pistes independantes ──")
+        for _, entry in ipairs(sorted_strips) do
+            local st = entry.st
+            local strip_key = "strip:" .. entry.idx
+            table.insert(ap_ids, strip_key)
+            local disp = "  " .. (st.name or "?")
+            if #disp > 30 then disp = disp:sub(1, 28) .. ".." end
+            table.insert(ap_display, disp)
+        end
+    end
+
     local viewing = data.myap_view
     if not viewing then
         viewing = linked or ap_ids[1]
@@ -312,12 +380,49 @@ function tab_myairport(data, mtos)
     if not ok then viewing = ap_ids[1] end
 
     table.insert(fs, string.format("label[0.20,%.2f;Aéroport :]", py + 0.10))
-    local viewing_disp = ap_display[1]
+    local viewing_disp = ap_display[1] or ""
     for i, id in ipairs(ap_ids) do
         if id == viewing then viewing_disp = ap_display[i]; break end
     end
     table.insert(fs, mkdd(2.40, py, 10.0, "myap_sel", ap_display, viewing_disp))
     py = py + 0.68
+
+    -- Cas piste indépendante sélectionnée
+    if viewing and viewing:sub(1, 6) == "strip:" then
+        local si = tonumber(viewing:sub(7))
+        local strips2 = get_strips()
+        local st = si and strips2[si]
+        if not st then
+            table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#FF4444", "Piste introuvable.")))
+            return table.concat(fs)
+        end
+        local len = (st.p1 and st.p2) and math.floor(math.sqrt(
+            (st.p2.x-st.p1.x)^2+(st.p2.y-st.p1.y)^2+(st.p2.z-st.p1.z)^2)+0.5) or 0
+        table.insert(fs, string.format("box[0,%.2f;%.2f,0.50;#221100]", py, CFG.X_MAX))
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.05,
+            minetest.colorize("#FFAA44", fe("🛬 Piste indep.: " .. st.name))))
+        py = py + 0.58
+        table.insert(fs, string.format("box[0,%.2f;%.2f,2.80;#0d0800]", py, CFG.X_MAX))
+        table.insert(fs, string.format("label[0.40,%.2f;%s]", py+0.10, "Longueur : " .. len .. "m"))
+        table.insert(fs, string.format("label[0.40,%.2f;%s]", py+0.50, "Largeur  : " .. (st.width or 30) .. "m"))
+        if st.p1 then
+            table.insert(fs, string.format("label[0.40,%.2f;%s]", py+0.90,
+                clr("#555544", string.format("P1: %.0f, %.0f, %.0f", st.p1.x, st.p1.y, st.p1.z))))
+        end
+        if st.p2 then
+            table.insert(fs, string.format("label[0.40,%.2f;%s]", py+1.25,
+                clr("#555544", string.format("P2: %.0f, %.0f, %.0f", st.p2.x, st.p2.y, st.p2.z))))
+        end
+        local mid_x = st.p1 and st.p2 and math.floor((st.p1.x+st.p2.x)/2)
+        local mid_z = st.p1 and st.p2 and math.floor((st.p1.z+st.p2.z)/2)
+        if mid_x then
+            table.insert(fs, string.format("label[0.40,%.2f;%s]", py+1.60,
+                clr("#FFCC88", string.format("Centre : %.0f, %.0f (X,Z)", mid_x, mid_z))))
+        end
+        table.insert(fs, string.format("label[0.40,%.2f;%s]", py+2.00,
+            clr("#FF8844", "Aucun ATC dedie — piste de fortune / urgence")))
+        return table.concat(fs)
+    end
 
     local ap = find_ap(viewing)
     if not ap then
@@ -333,7 +438,7 @@ function tab_myairport(data, mtos)
 
     table.insert(fs, string.format("box[0,%.2f;%.2f,0.50;#002244]", py, CFG.X_MAX))
     table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.02,
-        fe("[" .. ap.id .. "] " .. ap.name) .. badge))
+        minetest.colorize("#88CCFF", fe("[" .. ap.id .. "] " .. ap.name)) .. badge))
     if ap.pos then
         table.insert(fs, string.format("label[10.0,%.2f;%s]", py + 0.02,
             clr("#446688", string.format("(%.0f,%.0f,%.0f)", ap.pos.x, ap.pos.y, ap.pos.z))))
@@ -449,8 +554,8 @@ function tab_atc(data, mtos)
         or (linked or "(non lié à un aéroport)")
     table.insert(fs, string.format("box[0,%.2f;%.2f,0.40;%s]", py, CFG.X_MAX, hbg))
     table.insert(fs, string.format("label[0.20,%.2f;%s]", py - 0.06,
-        fe("ATC — " .. linked_display)))
-    py = py + 0.60
+        minetest.colorize(hfg, fe("ATC — " .. linked_display))))
+    py = py + 0.46
 
     -- Sous-onglets
     local nl, nh = 0, 0
@@ -477,18 +582,36 @@ function tab_atc(data, mtos)
             return table.concat(fs)
         end
 
-        local item_h_base = 1.60
-        local avail = CFG.Y_MAX - py
-        local need_scroll = (#reqs * item_h_base > avail)
-        local list_h = math.min(#reqs * item_h_base, avail - 0.05)
+        -- Pagination : 3 demandes par page
+        local PER_PAGE = 3
+        local nb_pages = math.max(1, math.ceil(#reqs / PER_PAGE))
+        local page = data.atc_page or 1
+        if page > nb_pages then page = nb_pages end
+        if page < 1 then page = 1 end
+        data.atc_page = page
+        local idx_start = (page - 1) * PER_PAGE + 1
+        local idx_end   = math.min(page * PER_PAGE, #reqs)
 
-        if need_scroll then
-            table.insert(fs, scroll_box(0, py, CFG.X_MAX - 0.28, list_h, "sc_atc"))
+        -- Barre de navigation
+        if nb_pages > 1 then
+            table.insert(fs, string.format("box[0,%.2f;%.2f,0.44;#001a00]", py, CFG.X_MAX))
+            if page > 1 then
+                table.insert(fs, string.format("button[0,%.2f;2.5,0.44;atc_prev;%s]",
+                    py, fe(clr("#88FF88", "◀ Préc."))))
+            end
+            table.insert(fs, string.format("label[3.0,%.2f;%s]", py + 0.10,
+                clr("#FFFF44", string.format("Page %d / %d  (%d demandes)", page, nb_pages, #reqs))))
+            if page < nb_pages then
+                table.insert(fs, string.format("button[%.2f,%.2f;2.5,0.44;atc_next;%s]",
+                    CFG.X_MAX - 2.5, py, fe(clr("#88FF88", "Suiv. ▶"))))
+            end
+            py = py + 0.50
         end
 
-        local rpy = need_scroll and 0 or py
-
-        for ri, req in ipairs(reqs) do
+        local rpy = py
+        for ri = idx_start, idx_end do
+        local req = reqs[ri]
+        if req then
             local age = os.time() - (req.time or 0)
             local bg, fg
             if req.status == "hold" then bg = "#1a1a00"; fg = "#CCCC00"
@@ -502,23 +625,22 @@ function tab_atc(data, mtos)
             end
             local stat = req.status == "hold" and "⏸" or "★"
 
-            -- Nom complet de l'aéroport concerné
             local ap_obj_req = find_ap(req.airport)
-            local ap_disp_req = ap_obj_req and (ap_obj_req.name .. " [" .. req.airport .. "]") or (req.airport or "?")
+            local ap_name_req = ap_obj_req and ap_obj_req.name or (req.airport or "?")
 
             local age_str = age < 60 and (age .. "s") or (math.floor(age / 60) .. "min " .. age % 60 .. "s")
-            -- Ligne unique : [n]★ joueur (modèle) → NomAéroport [ID] | demande | il y a Xs
-            -- fe() obligatoire car la ligne contient des [ qui casseraient le formspec
+            -- Ligne titre avec couleur : \[ pour échapper [, clr() pour la couleur
+            local title = string.format("[%d]%s %s (%s) -> %s  |  %s  |  il y a %s",
+                ri, stat, req.player, req.model or "?", ap_name_req, det, age_str)
             table.insert(fs, string.format("box[0,%.2f;%.2f,0.50;%s]", rpy, CFG.X_MAX, bg))
             table.insert(fs, string.format("label[0.20,%.2f;%s]", rpy + 0.00,
-                fe(string.format("[%d]%s %s (%s) → %s  |  %s  |  il y a %s",
-                    ri, stat, req.player, req.model or "?", ap_disp_req, det, age_str))))
+                minetest.colorize(fg, fe(title))))
             rpy = rpy + 0.95
 
             if req.req_type == "landing" or req.req_type == "takeoff" then
                 local ap  = linked and find_ap(linked)
                 local rws = ap and ap.runways or {}
-                local verb = req.req_type == "landing" and "Att." or "Déc."
+                local verb = req.req_type == "landing" and "Att." or "Dec."
                 if #rws > 0 then
                     local bx = 0.10
                     for rwi, rw in ipairs(rws) do
@@ -527,7 +649,7 @@ function tab_atc(data, mtos)
                         for _, pn in ipairs(parts) do
                             if bx + 2.8 > CFG.X_MAX then break end
                             table.insert(fs, string.format(
-                                "button[%.2f,%.2f;1.7,0.00;atc_rw_%d_%d_%s;%s]",
+                                "button[%.2f,%.2f;2.7,0.46;atc_rw_%d_%d_%s;%s]",
                                 bx, rpy, ri, rwi, pn, fe(clr("#00FF88", "✔ " .. verb .. " " .. pn))))
                             bx = bx + 2.8
                         end
@@ -541,11 +663,11 @@ function tab_atc(data, mtos)
                 end
             elseif req.req_type == "flyover" then
                 local alt_v = req.alt or 500
-                table.insert(fs, string.format("label[0.20,%.2f;Alt.(m):]", rpy - 0.20))
-                table.insert(fs, string.format("field[2.20,%.2f;2.8,0.90;atc_alt_%d;;%s]",
+                table.insert(fs, string.format("label[0.20,%.2f;Alt.(m):]", rpy + 0.10))
+                table.insert(fs, string.format("field[2.20,%.2f;2.8,0.50;atc_alt_%d;;%s]",
                     rpy, ri, fe(tostring(alt_v))))
-                table.insert(fs, string.format("button[5.20,%.2f;1.5,0.20;atc_alt_set_%d;Set]", rpy, ri))
-                table.insert(fs, string.format("button[6.90,%.2f;3.0,0.20;atc_auth_%d;%s]",
+                table.insert(fs, string.format("button[5.20,%.2f;1.5,0.50;atc_alt_set_%d;Set]", rpy, ri))
+                table.insert(fs, string.format("button[6.90,%.2f;3.0,0.50;atc_auth_%d;%s]",
                     rpy, ri, fe(clr("#00FF88", "✔ Autorisé"))))
                 rpy = rpy + 0.90
             elseif req.req_type == "approach" then
@@ -567,27 +689,23 @@ function tab_atc(data, mtos)
             end
 
             -- Boutons communs
-            table.insert(fs, string.format("button[0.10,%.2f;2.7,0.35;atc_ref_%d;%s]",
-                rpy, ri, fe(clr("#FF4444", "✕ Refusé"))))
+            table.insert(fs, string.format("button[0.10,%.2f;2.7,0.44;atc_ref_%d;%s]",
+                rpy, ri, fe(clr("#FF4444", "✕ Refuse"))))
             if req.status == "hold" then
                 table.insert(fs, string.format("style[atc_hold_%d;bgcolor=#333333;textcolor=#666666]", ri))
-                table.insert(fs, string.format("button[2.90,%.2f;3.3,0.35;atc_hold_%d;%s]",
+                table.insert(fs, string.format("button[2.90,%.2f;3.3,0.44;atc_hold_%d;%s]",
                     rpy, ri, fe("⏸ En attente")))
             else
-                table.insert(fs, string.format("button[2.90,%.2f;3.3,0.35;atc_hold_%d;%s]",
+                table.insert(fs, string.format("button[2.90,%.2f;3.3,0.44;atc_hold_%d;%s]",
                     rpy, ri, fe(clr("#FFAA00", "⏸ Attente"))))
             end
-            table.insert(fs, string.format("button[6.30,%.2f;2.7,0.35;atc_del_%d;%s]",
+            table.insert(fs, string.format("button[6.30,%.2f;2.7,0.44;atc_del_%d;%s]",
                 rpy, ri, fe(clr("#666666", "✕ Suppr."))))
             rpy = rpy + 0.50
             table.insert(fs, string.format("box[0,%.2f;%.2f,0.03;#333333]", rpy, CFG.X_MAX))
             rpy = rpy + 0.08
-        end
-
-        if need_scroll then
-            table.insert(fs, "scroll_container_end[]")
-            table.insert(fs, scroll_bar(CFG.X_MAX - 0.26, py, list_h, "sc_atc"))
-        end
+        end -- if req then
+        end -- for ri
     end
 
     -- ===================== RADIO =====================
@@ -708,6 +826,7 @@ function tab_admin(data, mtos)
         table.insert(fs, string.format("box[0,%.2f;%.2f,0.46;#002244]", py, CFG.X_MAX))
         table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.00, clr("#88CCFF", "Aéroports enregistrés")))
         table.insert(fs, string.format("button[11.2,%.2f;3.4,0.38;new_ap;+ Nouvel aéroport]", py + 0.04))
+        table.insert(fs, string.format("button[7.5,%.2f;3.5,0.38;goto_strips;Pistes independantes →]", py + 0.04))
         py = py + 0.65
         if #airports == 0 then
             table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#888888", "Aucun aéroport.")))
@@ -722,7 +841,7 @@ function tab_admin(data, mtos)
                 local bpy = need_scroll and (i - 1) * item_h or py
                 table.insert(fs, string.format("box[0,%.2f;%.2f,%.2f;#001122]", bpy, CFG.X_MAX, item_h))
                 table.insert(fs, string.format("label[0.20,%.2f;%s]",
-                    bpy + 0.00, fe(string.format("[%s] %s — %d piste%s", ap.id, ap.name, nrw, nrw > 1 and "s" or ""))))
+                    bpy + 0.00, minetest.colorize("#88CCFF", fe(string.format("[%s] %s — %d piste%s", ap.id, ap.name, nrw, nrw > 1 and "s" or "")))))
                 table.insert(fs, string.format("button[10.40,%.2f;2.0,0.38;ap_rw_%d;Pistes →]", bpy + 0.06, i))
                 table.insert(fs, string.format("button[12.50,%.2f;2.1,0.38;ap_del_%d;%s]",
                     bpy + 0.06, i, fe(clr("#FF6666", "✕ Suppr."))))
@@ -771,7 +890,7 @@ function tab_admin(data, mtos)
         ap.runways = ap.runways or {}
         table.insert(fs, string.format("box[0,%.2f;%.2f,0.46;#002244]", py, CFG.X_MAX))
         table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.00,
-            fe("[" .. ap.id .. "] " .. ap.name .. " — Pistes")))
+            minetest.colorize("#88CCFF", fe("[" .. ap.id .. "] " .. ap.name .. " — Pistes"))))
         table.insert(fs, string.format("button[12.2,%.2f;2.4,0.38;av_back;← Retour]", py + 0.04))
         table.insert(fs, string.format("button[9.10,%.2f;2.9,0.38;new_rw;+ Nouvelle piste]", py + 0.04))
         py = py + 0.52
@@ -813,7 +932,7 @@ function tab_admin(data, mtos)
         if not ap then data.av = "list"; return tab_admin(data, mtos) end
         table.insert(fs, string.format("box[0,%.2f;%.2f,0.46;#002244]", py, CFG.X_MAX))
         table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.00,
-            fe("Nouvelle piste — [" .. ap.id .. "] " .. ap.name)))
+            minetest.colorize("#88CCFF", fe("Nouvelle piste — [" .. ap.id .. "] " .. ap.name))))
         table.insert(fs, string.format("button[12.2,%.2f;2.4,0.38;av_back;← Retour]", py + 0.04))
         py = py + 0.58
         table.insert(fs, string.format("label[0.20,%.2f;Suffixe optionnel (L, R, C ou vide) :]", py))
@@ -859,6 +978,89 @@ function tab_admin(data, mtos)
         table.insert(fs, string.format("button[0.20,%.2f;4.5,0.62;rw_create;✔ Créer la piste]", py))
         if data.n_rw_err then
             table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.74, clr("#FF4444", data.n_rw_err)))
+        end
+        return table.concat(fs)
+    end
+
+    -- ---- LISTE PISTES INDÉPENDANTES ----
+    if view == "strips" then
+        local strips = get_strips()
+        table.insert(fs, string.format("box[0,%.2f;%.2f,0.46;#332200]", py, CFG.X_MAX))
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.00, clr("#FFAA44", "Pistes independantes (sans ATC)")))
+        table.insert(fs, string.format("button[12.2,%.2f;2.4,0.38;av_back;← Retour]", py + 0.04))
+        table.insert(fs, string.format("button[9.1,%.2f;2.9,0.38;new_strip;+ Nouvelle piste]", py + 0.04))
+        py = py + 0.58
+        if #strips == 0 then
+            table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#888888", "Aucune piste independante.")))
+        else
+            -- En-tête
+            table.insert(fs, string.format("box[0,%.2f;%.2f,0.38;#221100]", py, CFG.X_MAX))
+            table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.02, clr("#FFAA44", "Nom")))
+            table.insert(fs, string.format("label[3.0,%.2f;%s]",  py + 0.02, clr("#FFAA44", "Long.")))
+            table.insert(fs, string.format("label[4.8,%.2f;%s]",  py + 0.02, clr("#FFAA44", "Larg.")))
+            table.insert(fs, string.format("label[11.0,%.2f;%s]", py + 0.02, clr("#FFAA44", "P1 / P2")))
+            py = py + 0.44
+            local item_h = 0.50
+            local avail = CFG.Y_MAX - py
+            local need_scroll = (#strips * item_h > avail)
+            local list_h = math.min(#strips * item_h, avail)
+            if need_scroll then table.insert(fs, scroll_box(0, py, CFG.X_MAX - 0.28, list_h, "sc_st")) end
+            for si, st in ipairs(strips) do
+                local bpy = need_scroll and (si - 1) * item_h or py
+                local len = (st.p1 and st.p2) and math.floor(math.sqrt(
+                    (st.p2.x-st.p1.x)^2+(st.p2.y-st.p1.y)^2+(st.p2.z-st.p1.z)^2)+0.5) or 0
+                local p1s = st.p1 and string.format("%.0f,%.0f,%.0f",st.p1.x,st.p1.y,st.p1.z) or "?"
+                local p2s = st.p2 and string.format("%.0f,%.0f,%.0f",st.p2.x,st.p2.y,st.p2.z) or "?"
+                table.insert(fs, string.format("box[0,%.2f;%.2f,%.2f;#1a0d00]", bpy, CFG.X_MAX, item_h))
+                table.insert(fs, string.format("label[0.20,%.2f;%s]", bpy+0.06, clr("#FFCC88", st.name or "?")))
+                table.insert(fs, string.format("label[3.0,%.2f;%dm]",  bpy+0.06, len))
+                table.insert(fs, string.format("label[4.8,%.2f;%dm]",  bpy+0.06, st.width or 30))
+                table.insert(fs, string.format("label[11.0,%.2f;%s]",  bpy+0.06, clr("#555544",
+                    p1s:sub(1,10).."|"..p2s:sub(1,10))))
+                table.insert(fs, string.format("button[12.5,%.2f;2.1,0.38;strip_del_%d;%s]",
+                    bpy+0.06, si, fe(clr("#FF6666", "✕ Suppr."))))
+                if not need_scroll then py = py + item_h end
+            end
+            if need_scroll then
+                table.insert(fs, "scroll_container_end[]")
+                table.insert(fs, scroll_bar(CFG.X_MAX - 0.26, py, list_h, "sc_st"))
+            end
+        end
+        return table.concat(fs)
+    end
+
+    -- ---- NOUVELLE PISTE INDÉPENDANTE ----
+    if view == "new_strip" then
+        table.insert(fs, string.format("box[0,%.2f;%.2f,0.46;#332200]", py, CFG.X_MAX))
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.00, clr("#FFAA44", "Nouvelle piste independante")))
+        table.insert(fs, string.format("button[12.2,%.2f;2.4,0.38;av_back;← Retour]", py + 0.04))
+        py = py + 0.58
+        table.insert(fs, string.format("label[0.20,%.2f;Nom de la piste (ex: Champ-Nord) :]", py))
+        py = py + 0.36
+        table.insert(fs, string.format("field[0.20,%.2f;6.0,0.62;strip_name;;%s]", py, fe(data.n_st_name or "")))
+        py = py + 0.80
+        table.insert(fs, string.format("label[0.20,%.2f;Largeur (m) :]", py))
+        py = py + 0.36
+        table.insert(fs, string.format("field[0.20,%.2f;3.0,0.62;strip_wid;;%s]", py, fe(data.n_st_wid or "30")))
+        py = py + 0.80
+        table.insert(fs, string.format("label[0.20,%.2f;Extremite 1 — X / Y / Z :]", py))
+        py = py + 0.36
+        table.insert(fs, string.format("field[0.20,%.2f;3.5,0.62;strip_p1x;;%s]", py, fe(data.n_st_p1x or "")))
+        table.insert(fs, string.format("field[3.90,%.2f;3.5,0.62;strip_p1y;;%s]", py, fe(data.n_st_p1y or "")))
+        table.insert(fs, string.format("field[7.60,%.2f;3.5,0.62;strip_p1z;;%s]", py, fe(data.n_st_p1z or "")))
+        py = py + 0.80
+        table.insert(fs, string.format("label[0.20,%.2f;Extremite 2 — X / Y / Z :]", py))
+        py = py + 0.36
+        table.insert(fs, string.format("field[0.20,%.2f;3.5,0.62;strip_p2x;;%s]", py, fe(data.n_st_p2x or "")))
+        table.insert(fs, string.format("field[3.90,%.2f;3.5,0.62;strip_p2y;;%s]", py, fe(data.n_st_p2y or "")))
+        table.insert(fs, string.format("field[7.60,%.2f;3.5,0.62;strip_p2z;;%s]", py, fe(data.n_st_p2z or "")))
+        py = py + 0.80
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py,
+            clr("#888888", "Visible sur le radar en orange. Aucun ATC dedié.")))
+        py = py + 0.42
+        table.insert(fs, string.format("button[0.20,%.2f;4.5,0.62;strip_create;✔ Creer la piste]", py))
+        if data.n_st_err then
+            table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.74, clr("#FF4444", data.n_st_err)))
         end
         return table.concat(fs)
     end

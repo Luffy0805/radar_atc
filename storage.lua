@@ -58,3 +58,21 @@ function find_ap(id)
         if a.id == id then return a, i end
     end
 end
+
+-- =============================================================
+--  PISTES INDÉPENDANTES (sans ATC dédié)
+--  Structure : {name=str, p1={x,y,z}, p2={x,y,z}, width=int, note=str}
+-- =============================================================
+local _strip_cache = nil
+
+function get_strips()
+    if not _strip_cache then
+        local r = ST:get_string("indep_strips_v1")
+        _strip_cache = (r ~= "" and minetest.deserialize(r)) or {}
+    end
+    return _strip_cache
+end
+
+function save_strips()
+    ST:set_string("indep_strips_v1", minetest.serialize(_strip_cache or {}))
+end

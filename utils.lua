@@ -112,9 +112,23 @@ function w2r(tp, cp, radius)
     local dz = -(tp.z - cp.z) / radius
     local sx = CFG.RW / 2 + dx * CFG.RW / 2
     local sy = CFG.RH / 2 + dz * CFG.RH / 2
+    -- Retourne nil si hors du radar (pas de clamp sur le centre)
     if sx < 0.05 or sx > CFG.RW - 0.25 or sy < 0.05 or sy > CFG.RH - 0.25 then
         return nil, nil
     end
+    return sx, sy
+end
+
+-- Version qui retourne toujours des coordonnées, clampées au bord du radar
+-- Utilisée pour le tracé des segments de piste (interpolation correcte)
+function w2r_clamp(tp, cp, radius)
+    local dx = (tp.x - cp.x) / radius
+    local dz = -(tp.z - cp.z) / radius
+    local sx = CFG.RW / 2 + dx * CFG.RW / 2
+    local sy = CFG.RH / 2 + dz * CFG.RH / 2
+    -- Clamp sur les bords du radar
+    sx = math.max(0.05, math.min(CFG.RW - 0.25, sx))
+    sy = math.max(0.05, math.min(CFG.RH - 0.25, sy))
     return sx, sy
 end
 

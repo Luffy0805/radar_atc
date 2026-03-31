@@ -117,9 +117,29 @@ function do_fields(app, mtos, sender, fields)
         -- Changement de dropdown (traité en dernier dans ce bloc)
         if fields.myap_sel then
             local raw = fields.myap_sel or ""
-            -- Le dropdown envoie "LFPG — Nom..." : extraire l'ID avant " — "
-            local nv = raw:match("^([A-Z0-9%-]+)") or raw:match("^(.-)%s*%—") or raw:sub(1,6)
-            nv = nv:match("^%s*(.-)%s*$"):upper()
+            local nv
+            -- Piste indépendante : commence par l'emoji 🛬
+            -- On identifie par le contenu affiché dans le dropdown
+            -- Le dropdown stocke l'index dans ap_ids, mais on reçoit le texte affiché
+            -- On cherche dans ap_ids l'entrée qui correspond au texte
+            -- Méthode : si raw commence par le préfixe piste
+            if raw:match("^%xF0%x9F%x9B%xAC") or raw:sub(1,4) == "ð¬" then
+                -- Emoji 🛬 = piste indép, trouver laquelle par le nom
+                local strip_name = raw:gsub("^.-%s", "", 1):match("^%s*(.-)%s*$")
+                local strips = get_strips()
+                for si, st in ipairs(strips) do
+                    if st.name == strip_name or raw:find(st.name, 1, true) then
+                        nv = "strip:" .. si
+                        break
+                    end
+                end
+                nv = nv or raw
+            else
+                -- Aéroport normal : extraire l'ID OACI (lettres/chiffres avant " — ")
+                nv = raw:match("^([A-Z0-9]+)%s*%-%-?%s*") or raw:match("^([A-Z0-9]+)")
+                if not nv or nv == "" then nv = raw:sub(1, 6) end
+                nv = nv:upper():gsub("[^A-Z0-9]", ""):sub(1, 6)
+            end
             if nv ~= data.myap_view then
                 data.myap_ctrl_mode = nil
                 data.myap_ctrl_err  = nil
@@ -140,10 +160,16 @@ function do_fields(app, mtos, sender, fields)
         if not data.admin_ok then return true end
 
         if fields.av_back then
-            if     data.av == "new_ap"  then data.av = "list"; data.ai = nil
-            elseif data.av == "rw_list" then data.av = "list"; data.ai = nil
-            elseif data.av == "new_rw"  then data.av = "rw_list"
+            if     data.av == "new_ap"   then data.av = "list";   data.ai = nil
+            elseif data.av == "rw_list"  then data.av = "list";   data.ai = nil
+            elseif data.av == "new_rw"   then data.av = "rw_list"
+            elseif data.av == "strips"   then data.av = "list"
+            elseif data.av == "new_strip" then data.av = "strips"
             else   data.av = "list" end
+            return true
+        end
+        if fields.goto_strips then
+            data.av = "strips"
             return true
         end
         if fields.new_ap then
@@ -238,12 +264,66 @@ function do_fields(app, mtos, sender, fields)
                 end
             end
         end
+
+        -- Pistes indépendantes
+        if fields.new_strip then
+            data.av = "new_strip"
+            data.n_st_name = ""; data.n_st_wid = "30"; data.n_st_note = ""
+            for _, k in ipairs({"p1x","p1y","p1z","p2x","p2y","p2z"}) do data["n_st_"..k] = "" end
+            data.n_st_err = nil
+            return true
+        end
+        if fields.strip_create then
+            data.n_st_name = fields.strip_name or data.n_st_name or ""
+            data.n_st_wid  = fields.strip_wid  or data.n_st_wid  or "30"
+            data.n_st_note = fields.strip_note or data.n_st_note or ""
+            for _, k in ipairs({"p1x","p1y","p1z","p2x","p2y","p2z"}) do
+                data["n_st_"..k] = fields["strip_"..k] or data["n_st_"..k] or ""
+            end
+            if (data.n_st_name or "") == "" then
+                data.n_st_err = "Nom obligatoire."; return true
+            end
+            local function rn(k) return tonumber(data["n_st_"..k]) end
+            local p1x,p1y,p1z = rn("p1x"),rn("p1y"),rn("p1z")
+            local p2x,p2y,p2z = rn("p2x"),rn("p2y"),rn("p2z")
+            if not (p1x and p1y and p1z and p2x and p2y and p2z) then
+                data.n_st_err = "Toutes les coordonnées sont requises."; return true
+            end
+            local strips = get_strips()
+            table.insert(strips, {
+                name  = data.n_st_name,
+                width = tonumber(data.n_st_wid) or 30,
+                note  = data.n_st_note,
+                p1    = {x=p1x, y=p1y, z=p1z},
+                p2    = {x=p2x, y=p2y, z=p2z},
+            })
+            save_strips()
+            data.av = "strips"; data.n_st_err = nil
+            return true
+        end
+        for si = 1, 60 do
+            if fields["strip_del_"..si] then
+                local strips = get_strips()
+                if strips[si] then table.remove(strips, si); save_strips() end
+                return true
+            end
+        end
     end
 
     -- ===== ATC =====
     if data.tab == "atc" then
         if fields.atcsub_req then data.atc_sub = "requests"; return true end
         if fields.atcsub_rad then data.atc_sub = "radio";    return true end
+        if fields.atc_prev then
+            data.atc_page = math.max(1, (data.atc_page or 1) - 1)
+            return true
+        end
+        if fields.atc_next then
+            local state2 = get_shared_atc(linked)
+            local max_p = #(state2.requests or {})
+            data.atc_page = math.min(max_p, (data.atc_page or 1) + 1)
+            return true
+        end
 
         local state = get_shared_atc(linked)
         local reqs  = state.requests or {}
