@@ -52,36 +52,42 @@ function do_fields(app, mtos, sender, fields)
         -- Initialiser myap_view si absent
         if not data.myap_view then
             local airports = get_airports()
-            local linked_id = data.linked_airport
-            data.myap_view = linked_id or (airports[1] and airports[1].id)
+            data.myap_view = data.linked_airport or (airports[1] and airports[1].id)
         end
 
-        -- IMPORTANT : traiter les actions de contrôle EN PREMIER,
-        -- avant myap_sel qui fait return true et coupe le traitement.
-        -- Minetest envoie TOUS les fields en même temps, donc si on
-        -- traite myap_sel en premier avec return true, ctrl_request
-        -- n'est jamais vu.
-
+        -- Traiter les actions de contrôle EN PREMIER (myap_sel fait return true)
         if fields.ctrl_request then
-            -- Ouvre le formulaire mot de passe pour l'aéroport affiché
-            -- Mettre à jour myap_view depuis le dropdown s'il est envoyé simultanément
             if fields.myap_sel then
                 local raw = fields.myap_sel or ""
-                local nv  = raw:match("^([A-Z0-9%-]+)") or raw:match("^(.-)%s*%—") or raw:sub(1,6)
-                nv = nv:match("^%s*(.-)%s*$")  -- trim
-                if nv ~= "" then data.myap_view = nv:upper() end
+                if not raw:find("Pistes independantes", 1, true) then
+                    local nv
+                    if raw:sub(1, 2) == "  " then
+                        local sname = raw:match("^%s+(.-)%s*$") or raw
+                        for si, st in ipairs(get_strips()) do
+                            if st.name and (st.name == sname or raw:find(st.name, 1, true)) then
+                                nv = "strip:" .. si; break
+                            end
+                        end
+                        nv = nv or raw
+                    else
+                        nv = raw:match("^([A-Z0-9]+)%s*%-%-?%s*") or raw:match("^([A-Z0-9]+)")
+                        if not nv or nv == "" then nv = raw:sub(1, 6) end
+                        nv = nv:upper():gsub("[^A-Z0-9]", ""):sub(1, 6)
+                    end
+                    if nv ~= data.myap_view then
+                        data.myap_ctrl_mode = nil; data.myap_ctrl_err = nil
+                    end
+                    data.myap_view = nv
+                end
             end
             data.myap_ctrl_mode = data.myap_view
             data.myap_ctrl_err  = nil
             return true
         end
-
         if fields.ctrl_cancel then
-            data.myap_ctrl_mode = nil
-            data.myap_ctrl_err  = nil
+            data.myap_ctrl_mode = nil; data.myap_ctrl_err = nil
             return true
         end
-
         if fields.ctrl_confirm then
             if fields.ctrl_pw == CFG.radar_password_remote then
                 local view = data.myap_ctrl_mode
@@ -90,59 +96,48 @@ function do_fields(app, mtos, sender, fields)
                     data.active_airport = view
                     data.remote_center  = {x=ap.pos.x, y=ap.pos.y, z=ap.pos.z}
                     active_nodes[pk(mtos.pos)] = {
-                        pos        = {x=mtos.pos.x, y=mtos.pos.y, z=mtos.pos.z},
+                        pos = {x=mtos.pos.x, y=mtos.pos.y, z=mtos.pos.z},
                         airport_id = view,
                     }
                 end
-                data.myap_ctrl_mode = nil
-                data.myap_ctrl_err  = nil
+                data.myap_ctrl_mode = nil; data.myap_ctrl_err = nil
                 data.tab = "radar"
             else
                 data.myap_ctrl_err = "Mot de passe incorrect."
             end
             return true
         end
-
         if fields.ctrl_return then
             data.active_airport = data.linked_airport
             data.remote_center  = nil
             active_nodes[pk(mtos.pos)] = {
-                pos        = {x=mtos.pos.x, y=mtos.pos.y, z=mtos.pos.z},
+                pos = {x=mtos.pos.x, y=mtos.pos.y, z=mtos.pos.z},
                 airport_id = data.linked_airport,
             }
             data.tab = "radar"
             return true
         end
 
-        -- Changement de dropdown (traité en dernier dans ce bloc)
+        -- Changement de dropdown (en dernier)
         if fields.myap_sel then
             local raw = fields.myap_sel or ""
+            if raw:find("Pistes independantes", 1, true) then return true end
             local nv
-            -- Piste indépendante : commence par l'emoji 🛬
-            -- On identifie par le contenu affiché dans le dropdown
-            -- Le dropdown stocke l'index dans ap_ids, mais on reçoit le texte affiché
-            -- On cherche dans ap_ids l'entrée qui correspond au texte
-            -- Méthode : si raw commence par le préfixe piste
-            if raw:match("^%xF0%x9F%x9B%xAC") or raw:sub(1,4) == "ð¬" then
-                -- Emoji 🛬 = piste indép, trouver laquelle par le nom
-                local strip_name = raw:gsub("^.-%s", "", 1):match("^%s*(.-)%s*$")
-                local strips = get_strips()
-                for si, st in ipairs(strips) do
-                    if st.name == strip_name or raw:find(st.name, 1, true) then
-                        nv = "strip:" .. si
-                        break
+            if raw:sub(1, 2) == "  " then
+                local sname = raw:match("^%s+(.-)%s*$") or raw
+                for si, st in ipairs(get_strips()) do
+                    if st.name and (st.name == sname or raw:find(st.name, 1, true)) then
+                        nv = "strip:" .. si; break
                     end
                 end
                 nv = nv or raw
             else
-                -- Aéroport normal : extraire l'ID OACI (lettres/chiffres avant " — ")
                 nv = raw:match("^([A-Z0-9]+)%s*%-%-?%s*") or raw:match("^([A-Z0-9]+)")
                 if not nv or nv == "" then nv = raw:sub(1, 6) end
                 nv = nv:upper():gsub("[^A-Z0-9]", ""):sub(1, 6)
             end
             if nv ~= data.myap_view then
-                data.myap_ctrl_mode = nil
-                data.myap_ctrl_err  = nil
+                data.myap_ctrl_mode = nil; data.myap_ctrl_err = nil
             end
             data.myap_view = nv
             return true
@@ -320,8 +315,9 @@ function do_fields(app, mtos, sender, fields)
         end
         if fields.atc_next then
             local state2 = get_shared_atc(linked)
-            local max_p = #(state2.requests or {})
-            data.atc_page = math.min(max_p, (data.atc_page or 1) + 1)
+            local nb = #(state2.requests or {})
+            local nb_pages = math.max(1, math.ceil(nb / 3))
+            data.atc_page = math.min(nb_pages, (data.atc_page or 1) + 1)
             return true
         end
 

@@ -323,9 +323,20 @@ function tab_myairport(data, mtos)
     end
 
     -- Position de référence pour le tri par distance
+    -- On tient compte du changement artificiel d'aéroport (active_airport via mdp)
     local ref_pos = data.remote_center or data.center_pos or mtos.pos
 
-    local ap_ids = {}; local ap_display = {}
+    -- Calculer la distance du groupe "Pistes indépendantes" = piste la plus proche
+    local strips = get_strips()
+    local strips_min_dist = math.huge
+    for _, st in ipairs(strips) do
+        if st.p1 and st.p2 then
+            local mid = {x=(st.p1.x+st.p2.x)/2, y=(st.p1.y+st.p2.y)/2, z=(st.p1.z+st.p2.z)/2}
+            local d = d3d(ref_pos, mid)
+            if d < strips_min_dist then strips_min_dist = d end
+        end
+    end
+
     -- Trier les aéroports par distance croissante
     local sorted_airports = {}
     for _, a in ipairs(airports) do table.insert(sorted_airports, a) end
@@ -334,50 +345,101 @@ function tab_myairport(data, mtos)
         local db = b.pos and d3d(ref_pos, b.pos) or math.huge
         return da < db
     end)
+
+    -- Trier les strips individuelles par distance
+    local sorted_strips = {}
+    for i, st in ipairs(strips) do table.insert(sorted_strips, {st=st, idx=i}) end
+    table.sort(sorted_strips, function(a, b)
+        local mid_a = a.st.p1 and a.st.p2 and {x=(a.st.p1.x+a.st.p2.x)/2, y=(a.st.p1.y+a.st.p2.y)/2, z=(a.st.p1.z+a.st.p2.z)/2}
+        local mid_b = b.st.p1 and b.st.p2 and {x=(b.st.p1.x+b.st.p2.x)/2, y=(b.st.p1.y+b.st.p2.y)/2, z=(b.st.p1.z+b.st.p2.z)/2}
+        local da = mid_a and d3d(ref_pos, mid_a) or math.huge
+        local db = mid_b and d3d(ref_pos, mid_b) or math.huge
+        return da < db
+    end)
+
+    -- Construire la liste fusionnée en intercalant les strips au bon endroit
+    local ap_ids = {}; local ap_display = {}
+    local strips_inserted = (#sorted_strips == 0)  -- si pas de strips, pas besoin d'insérer
     for _, a in ipairs(sorted_airports) do
+        local da = a.pos and d3d(ref_pos, a.pos) or math.huge
+        -- Insérer le groupe Pistes indépendantes avant cet aéroport s'il est plus proche
+        if not strips_inserted and strips_min_dist <= da then
+            table.insert(ap_ids, "goto_strips_view")
+            table.insert(ap_display, "↳ Pistes independantes")
+            strips_inserted = true
+        end
         table.insert(ap_ids, a.id)
         local disp = a.id .. " — " .. a.name
         if #disp > 30 then disp = disp:sub(1, 28) .. ".." end
         table.insert(ap_display, disp)
     end
-
-    -- Ajouter les pistes indépendantes si elles existent, triées par distance
-    local strips = get_strips()
-    if #strips > 0 then
-        local sorted_strips = {}
-        for i, st in ipairs(strips) do table.insert(sorted_strips, {st=st, idx=i}) end
-        table.sort(sorted_strips, function(a, b)
-            local mid_a = a.st.p1 and {
-                x=(a.st.p1.x+a.st.p2.x)/2, y=(a.st.p1.y+a.st.p2.y)/2, z=(a.st.p1.z+a.st.p2.z)/2}
-            local mid_b = b.st.p1 and {
-                x=(b.st.p1.x+b.st.p2.x)/2, y=(b.st.p1.y+b.st.p2.y)/2, z=(b.st.p1.z+b.st.p2.z)/2}
-            local da = mid_a and d3d(ref_pos, mid_a) or math.huge
-            local db = mid_b and d3d(ref_pos, mid_b) or math.huge
-            return da < db
-        end)
-        -- Séparateur dans le dropdown
-        table.insert(ap_ids, "sep:strips")
-        table.insert(ap_display, "── Pistes independantes ──")
-        for _, entry in ipairs(sorted_strips) do
-            local st = entry.st
-            local strip_key = "strip:" .. entry.idx
-            table.insert(ap_ids, strip_key)
-            local disp = "  " .. (st.name or "?")
-            if #disp > 30 then disp = disp:sub(1, 28) .. ".." end
-            table.insert(ap_display, disp)
-        end
+    -- Si les strips sont plus loin que tous les aéroports (ou aucun aéroport)
+    if not strips_inserted then
+        table.insert(ap_ids, "goto_strips_view")
+        table.insert(ap_display, "↳ Pistes independantes")
     end
 
     local viewing = data.myap_view
     if not viewing then
-        viewing = linked or ap_ids[1]
+        -- Par défaut: premier aéroport (pas le séparateur strips)
         for _, id in ipairs(ap_ids) do
-            if id ~= linked then viewing = id; break end
+            if id ~= "goto_strips_view" then viewing = id; break end
         end
+        viewing = viewing or ap_ids[1]
     end
     local ok = false
     for _, id in ipairs(ap_ids) do if id == viewing then ok = true; break end end
+    if not ok then
+        for _, id in ipairs(ap_ids) do
+            if id ~= "goto_strips_view" then viewing = id; ok = true; break end
+        end
+    end
     if not ok then viewing = ap_ids[1] end
+
+    -- Si "Pistes indépendantes" est sélectionné dans le dropdown → basculer vers la vue strips
+    if viewing == "goto_strips_view" then
+        -- Afficher la liste des pistes indépendantes triées par distance
+        table.insert(fs, string.format("box[0,%.2f;%.2f,0.46;#332200]", py, CFG.X_MAX))
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.00, clr("#FFAA44", "Pistes independantes (sans ATC)")))
+        py = py + 0.58
+        if #sorted_strips == 0 then
+            table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#888888", "Aucune piste independante.")))
+            return table.concat(fs)
+        end
+        -- En-tête
+        table.insert(fs, string.format("box[0,%.2f;%.2f,0.38;#221100]", py, CFG.X_MAX))
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.02, clr("#FFAA44", "Nom")))
+        table.insert(fs, string.format("label[3.0,%.2f;%s]",  py + 0.02, clr("#FFAA44", "Long.")))
+        table.insert(fs, string.format("label[4.8,%.2f;%s]",  py + 0.02, clr("#FFAA44", "Larg.")))
+        table.insert(fs, string.format("label[6.5,%.2f;%s]",  py + 0.02, clr("#FFAA44", "P1 (X,Y,Z)")))
+        table.insert(fs, string.format("label[10.2,%.2f;%s]", py + 0.02, clr("#FFAA44", "P2 (X,Y,Z)")))
+        py = py + 0.44
+        local item_h = 0.50
+        local avail2 = CFG.Y_MAX - py
+        local need_scroll2 = (#sorted_strips * item_h > avail2)
+        local list_h2 = math.min(#sorted_strips * item_h, avail2)
+        if need_scroll2 then table.insert(fs, scroll_box(0, py, CFG.X_MAX - 0.28, list_h2, "sc_st2")) end
+        for si, entry in ipairs(sorted_strips) do
+            local st = entry.st
+            local bpy2 = need_scroll2 and (si - 1) * item_h or py
+            local len = (st.p1 and st.p2) and math.floor(math.sqrt(
+                (st.p2.x-st.p1.x)^2+(st.p2.y-st.p1.y)^2+(st.p2.z-st.p1.z)^2)+0.5) or 0
+            local p1s = st.p1 and string.format("%.0f, %.0f, %.0f", st.p1.x, st.p1.y, st.p1.z) or "?"
+            local p2s = st.p2 and string.format("%.0f, %.0f, %.0f", st.p2.x, st.p2.y, st.p2.z) or "?"
+            table.insert(fs, string.format("box[0,%.2f;%.2f,%.2f;#0d0800]", bpy2, CFG.X_MAX, item_h))
+            table.insert(fs, string.format("label[0.20,%.2f;%s]", bpy2+0.06, clr("#FFCC88", st.name or "?")))
+            table.insert(fs, string.format("label[3.0,%.2f;%dm]",  bpy2+0.06, len))
+            table.insert(fs, string.format("label[4.8,%.2f;%dm]",  bpy2+0.06, st.width or 30))
+            table.insert(fs, string.format("label[6.5,%.2f;%s]",   bpy2+0.06, clr("#AAAACC", p1s)))
+            table.insert(fs, string.format("label[10.2,%.2f;%s]",  bpy2+0.06, clr("#AAAACC", p2s)))
+            if not need_scroll2 then py = py + item_h end
+        end
+        if need_scroll2 then
+            table.insert(fs, "scroll_container_end[]")
+            table.insert(fs, scroll_bar(CFG.X_MAX - 0.26, py, list_h2, "sc_st2"))
+        end
+        return table.concat(fs)
+    end
 
     table.insert(fs, string.format("label[0.20,%.2f;Aéroport :]", py + 0.10))
     local viewing_disp = ap_display[1] or ""
@@ -387,41 +449,12 @@ function tab_myairport(data, mtos)
     table.insert(fs, mkdd(2.40, py, 10.0, "myap_sel", ap_display, viewing_disp))
     py = py + 0.68
 
-    -- Cas piste indépendante sélectionnée
+    -- Cas piste indépendante sélectionnée (ancienne logique strip:idx — conservée pour compatibilité)
     if viewing and viewing:sub(1, 6) == "strip:" then
-        local si = tonumber(viewing:sub(7))
-        local strips2 = get_strips()
-        local st = si and strips2[si]
-        if not st then
-            table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#FF4444", "Piste introuvable.")))
-            return table.concat(fs)
-        end
-        local len = (st.p1 and st.p2) and math.floor(math.sqrt(
-            (st.p2.x-st.p1.x)^2+(st.p2.y-st.p1.y)^2+(st.p2.z-st.p1.z)^2)+0.5) or 0
-        table.insert(fs, string.format("box[0,%.2f;%.2f,0.50;#221100]", py, CFG.X_MAX))
-        table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.05,
-            minetest.colorize("#FFAA44", fe("🛬 Piste indep.: " .. st.name))))
-        py = py + 0.58
-        table.insert(fs, string.format("box[0,%.2f;%.2f,2.80;#0d0800]", py, CFG.X_MAX))
-        table.insert(fs, string.format("label[0.40,%.2f;%s]", py+0.10, "Longueur : " .. len .. "m"))
-        table.insert(fs, string.format("label[0.40,%.2f;%s]", py+0.50, "Largeur  : " .. (st.width or 30) .. "m"))
-        if st.p1 then
-            table.insert(fs, string.format("label[0.40,%.2f;%s]", py+0.90,
-                clr("#555544", string.format("P1: %.0f, %.0f, %.0f", st.p1.x, st.p1.y, st.p1.z))))
-        end
-        if st.p2 then
-            table.insert(fs, string.format("label[0.40,%.2f;%s]", py+1.25,
-                clr("#555544", string.format("P2: %.0f, %.0f, %.0f", st.p2.x, st.p2.y, st.p2.z))))
-        end
-        local mid_x = st.p1 and st.p2 and math.floor((st.p1.x+st.p2.x)/2)
-        local mid_z = st.p1 and st.p2 and math.floor((st.p1.z+st.p2.z)/2)
-        if mid_x then
-            table.insert(fs, string.format("label[0.40,%.2f;%s]", py+1.60,
-                clr("#FFCC88", string.format("Centre : %.0f, %.0f (X,Z)", mid_x, mid_z))))
-        end
-        table.insert(fs, string.format("label[0.40,%.2f;%s]", py+2.00,
-            clr("#FF8844", "Aucun ATC dedie — piste de fortune / urgence")))
-        return table.concat(fs)
+        -- Rediriger vers la vue globale des pistes
+        data.myap_view = "goto_strips_view"
+        viewing = "goto_strips_view"
+        -- (sera géré au prochain rafraîchissement)
     end
 
     local ap = find_ap(viewing)
@@ -555,7 +588,7 @@ function tab_atc(data, mtos)
     table.insert(fs, string.format("box[0,%.2f;%.2f,0.40;%s]", py, CFG.X_MAX, hbg))
     table.insert(fs, string.format("label[0.20,%.2f;%s]", py - 0.06,
         minetest.colorize(hfg, fe("ATC — " .. linked_display))))
-    py = py + 0.46
+    py = py + 0.60
 
     -- Sous-onglets
     local nl, nh = 0, 0
@@ -599,7 +632,7 @@ function tab_atc(data, mtos)
                 table.insert(fs, string.format("button[0,%.2f;2.5,0.44;atc_prev;%s]",
                     py, fe(clr("#88FF88", "◀ Préc."))))
             end
-            table.insert(fs, string.format("label[3.0,%.2f;%s]", py + 0.10,
+            table.insert(fs, string.format("label[3.0,%.2f;%s]", py + 0.00,
                 clr("#FFFF44", string.format("Page %d / %d  (%d demandes)", page, nb_pages, #reqs))))
             if page < nb_pages then
                 table.insert(fs, string.format("button[%.2f,%.2f;2.5,0.44;atc_next;%s]",
@@ -615,7 +648,7 @@ function tab_atc(data, mtos)
             local age = os.time() - (req.time or 0)
             local bg, fg
             if req.status == "hold" then bg = "#1a1a00"; fg = "#CCCC00"
-            elseif age < 60 then         bg = "#1a0000"; fg = "#FFFF44"
+            elseif age < 90 then         bg = "#1a0000"; fg = "#FFFF44"
             else                         bg = "#111111"; fg = "#888888" end
 
             local tlab = {landing="Atterrissage", takeoff="Décollage", flyover="Survol", approach="Approche"}
@@ -994,13 +1027,14 @@ function tab_admin(data, mtos)
             table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#888888", "Aucune piste independante.")))
         else
             -- En-tête
+            local item_h = 0.96
             table.insert(fs, string.format("box[0,%.2f;%.2f,0.38;#221100]", py, CFG.X_MAX))
             table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.02, clr("#FFAA44", "Nom")))
-            table.insert(fs, string.format("label[3.0,%.2f;%s]",  py + 0.02, clr("#FFAA44", "Long.")))
-            table.insert(fs, string.format("label[4.8,%.2f;%s]",  py + 0.02, clr("#FFAA44", "Larg.")))
-            table.insert(fs, string.format("label[11.0,%.2f;%s]", py + 0.02, clr("#FFAA44", "P1 / P2")))
+            table.insert(fs, string.format("label[3.6,%.2f;%s]",  py + 0.02, clr("#FFAA44", "Long.")))
+            table.insert(fs, string.format("label[5.4,%.2f;%s]",  py + 0.02, clr("#FFAA44", "Larg.")))
+            table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.22, clr("#FFAA44", "P1 (X,Y,Z)")))
+            table.insert(fs, string.format("label[3.6,%.2f;%s]",  py + 0.22, clr("#FFAA44", "P2 (X,Y,Z)")))
             py = py + 0.44
-            local item_h = 0.50
             local avail = CFG.Y_MAX - py
             local need_scroll = (#strips * item_h > avail)
             local list_h = math.min(#strips * item_h, avail)
@@ -1009,16 +1043,16 @@ function tab_admin(data, mtos)
                 local bpy = need_scroll and (si - 1) * item_h or py
                 local len = (st.p1 and st.p2) and math.floor(math.sqrt(
                     (st.p2.x-st.p1.x)^2+(st.p2.y-st.p1.y)^2+(st.p2.z-st.p1.z)^2)+0.5) or 0
-                local p1s = st.p1 and string.format("%.0f,%.0f,%.0f",st.p1.x,st.p1.y,st.p1.z) or "?"
-                local p2s = st.p2 and string.format("%.0f,%.0f,%.0f",st.p2.x,st.p2.y,st.p2.z) or "?"
+                local p1s = st.p1 and string.format("%.0f, %.0f, %.0f",st.p1.x,st.p1.y,st.p1.z) or "?"
+                local p2s = st.p2 and string.format("%.0f, %.0f, %.0f",st.p2.x,st.p2.y,st.p2.z) or "?"
                 table.insert(fs, string.format("box[0,%.2f;%.2f,%.2f;#1a0d00]", bpy, CFG.X_MAX, item_h))
-                table.insert(fs, string.format("label[0.20,%.2f;%s]", bpy+0.06, clr("#FFCC88", st.name or "?")))
-                table.insert(fs, string.format("label[3.0,%.2f;%dm]",  bpy+0.06, len))
-                table.insert(fs, string.format("label[4.8,%.2f;%dm]",  bpy+0.06, st.width or 30))
-                table.insert(fs, string.format("label[11.0,%.2f;%s]",  bpy+0.06, clr("#555544",
-                    p1s:sub(1,10).."|"..p2s:sub(1,10))))
+                table.insert(fs, string.format("label[0.20,%.2f;%s]", bpy+0.04, clr("#FFCC88", st.name or "?")))
+                table.insert(fs, string.format("label[3.6,%.2f;%dm]",  bpy+0.04, len))
+                table.insert(fs, string.format("label[5.4,%.2f;%dm]",  bpy+0.04, st.width or 30))
+                table.insert(fs, string.format("label[0.20,%.2f;%s]",  bpy+0.48, clr("#AAAACC", p1s)))
+                table.insert(fs, string.format("label[3.6,%.2f;%s]",   bpy+0.48, clr("#AAAACC", p2s)))
                 table.insert(fs, string.format("button[12.5,%.2f;2.1,0.38;strip_del_%d;%s]",
-                    bpy+0.06, si, fe(clr("#FF6666", "✕ Suppr."))))
+                    bpy+0.28, si, fe(clr("#FF6666", "✕ Suppr."))))
                 if not need_scroll then py = py + item_h end
             end
             if need_scroll then
@@ -1069,8 +1103,30 @@ function tab_admin(data, mtos)
 end
 
 -- =============================================================
---  FORMSPEC PRINCIPALE (barre d'onglets + dispatch)
+--  CONSTANTES ET HELPERS — REQUÊTES ATC
 -- =============================================================
+
+-- Durée en secondes après laquelle une requête devient "ancienne" (grisée)
+REQ_STALE_AGE = 90
+
+-- Vérifie si un avion (player+model) peut envoyer une nouvelle requête à une ATC (airport_id).
+-- Renvoie true si autorisé, false + message sinon.
+-- Règle : un avion ne peut pas envoyer la même requête à la même ATC,
+--         SAUF si la requête précédente est ancienne (>= REQ_STALE_AGE secondes).
+function can_send_request(airport_id, player, model, req_type)
+    local state = get_shared_atc(airport_id)
+    local reqs  = state.requests or {}
+    local now   = os.time()
+    for _, r in ipairs(reqs) do
+        if r.player == player and (r.model or "") == (model or "") and r.req_type == req_type then
+            local age = now - (r.time or 0)
+            if age < REQ_STALE_AGE then
+                return false, "Demande déjà en cours (réessayez dans " .. (REQ_STALE_AGE - age) .. "s)"
+            end
+        end
+    end
+    return true
+end
 function build_fs(app, mtos)
     local data = mtos.bdev:get_app_storage('ram', 'radar')
     data.tab = data.tab or "radar"

@@ -119,17 +119,29 @@ function w2r(tp, cp, radius)
     return sx, sy
 end
 
--- Version qui retourne toujours des coordonnées, clampées au bord du radar
--- Utilisée pour le tracé des segments de piste (interpolation correcte)
+-- Version clip-sur-bord : si le point est hors du rectangle radar,
+-- retourne le point d'intersection du segment [pt_interne→pt_externe] avec le bord.
+-- Préserve la direction du segment → pas de déformation d'orientation.
 function w2r_clamp(tp, cp, radius)
     local dx = (tp.x - cp.x) / radius
     local dz = -(tp.z - cp.z) / radius
     local sx = CFG.RW / 2 + dx * CFG.RW / 2
     local sy = CFG.RH / 2 + dz * CFG.RH / 2
-    -- Clamp sur les bords du radar
-    sx = math.max(0.05, math.min(CFG.RW - 0.25, sx))
-    sy = math.max(0.05, math.min(CFG.RH - 0.25, sy))
-    return sx, sy
+    local x0, y0 = CFG.RW / 2, CFG.RH / 2   -- centre du radar en coords formspec
+    local xmin, xmax = 0.05, CFG.RW - 0.25
+    local ymin, ymax = 0.05, CFG.RH - 0.25
+    -- Si dans les limites, retourner tel quel
+    if sx >= xmin and sx <= xmax and sy >= ymin and sy <= ymax then
+        return sx, sy
+    end
+    -- Clipper le segment [centre → sx,sy] sur le rectangle
+    local rx, ry = sx - x0, sy - y0
+    local t = 1.0
+    if rx > 0 then t = math.min(t, (xmax - x0) / rx)
+    elseif rx < 0 then t = math.min(t, (xmin - x0) / rx) end
+    if ry > 0 then t = math.min(t, (ymax - y0) / ry)
+    elseif ry < 0 then t = math.min(t, (ymin - y0) / ry) end
+    return x0 + rx * t, y0 + ry * t
 end
 
 -- =============================================================
