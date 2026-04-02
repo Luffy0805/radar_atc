@@ -59,26 +59,28 @@ function do_fields(app, mtos, sender, fields)
         if fields.ctrl_request then
             if fields.myap_sel then
                 local raw = fields.myap_sel or ""
-                if not raw:find("Pistes independantes", 1, true) then
-                    local nv
-                    if raw:sub(1, 2) == "  " then
-                        local sname = raw:match("^%s+(.-)%s*$") or raw
-                        for si, st in ipairs(get_strips()) do
-                            if st.name and (st.name == sname or raw:find(st.name, 1, true)) then
-                                nv = "strip:" .. si; break
-                            end
-                        end
-                        nv = nv or raw
-                    else
-                        nv = raw:match("^([A-Z0-9]+)%s*%-%-?%s*") or raw:match("^([A-Z0-9]+)")
-                        if not nv or nv == "" then nv = raw:sub(1, 6) end
-                        nv = nv:upper():gsub("[^A-Z0-9]", ""):sub(1, 6)
-                    end
-                    if nv ~= data.myap_view then
-                        data.myap_ctrl_mode = nil; data.myap_ctrl_err = nil
-                    end
-                    data.myap_view = nv
+                if raw:find("Pistes independantes", 1, true) then
+                    data.myap_view = "goto_strips_view"
+                    return true
                 end
+                local nv
+                if raw:sub(1, 2) == "  " then
+                    local sname = raw:match("^%s+(.-)%s*$") or raw
+                    for si, st in ipairs(get_strips()) do
+                        if st.name and (st.name == sname or raw:find(st.name, 1, true)) then
+                            nv = "strip:" .. si; break
+                        end
+                    end
+                    nv = nv or raw
+                else
+                    nv = raw:match("^([A-Z0-9]+)%s*%-%-?%s*") or raw:match("^([A-Z0-9]+)")
+                    if not nv or nv == "" then nv = raw:sub(1, 6) end
+                    nv = nv:upper():gsub("[^A-Z0-9]", ""):sub(1, 6)
+                end
+                if nv ~= data.myap_view then
+                    data.myap_ctrl_mode = nil; data.myap_ctrl_err = nil
+                end
+                data.myap_view = nv
             end
             data.myap_ctrl_mode = data.myap_view
             data.myap_ctrl_err  = nil
@@ -121,7 +123,10 @@ function do_fields(app, mtos, sender, fields)
         -- Changement de dropdown (en dernier)
         if fields.myap_sel then
             local raw = fields.myap_sel or ""
-            if raw:find("Pistes independantes", 1, true) then return true end
+            if raw:find("Pistes independantes", 1, true) then
+                data.myap_view = "goto_strips_view"
+                return true
+            end
             local nv
             if raw:sub(1, 2) == "  " then
                 local sname = raw:match("^%s+(.-)%s*$") or raw

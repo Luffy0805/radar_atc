@@ -380,13 +380,15 @@ function tab_myairport(data, mtos)
     end
 
     local viewing = data.myap_view
+
     if not viewing then
-        -- Par défaut: premier aéroport (pas le séparateur strips)
+        -- Par défaut: premier aéroport (pas le groupe strips)
         for _, id in ipairs(ap_ids) do
             if id ~= "goto_strips_view" then viewing = id; break end
         end
         viewing = viewing or ap_ids[1]
     end
+    -- Vérifier que viewing est valide
     local ok = false
     for _, id in ipairs(ap_ids) do if id == viewing then ok = true; break end end
     if not ok then
@@ -396,11 +398,19 @@ function tab_myairport(data, mtos)
     end
     if not ok then viewing = ap_ids[1] end
 
-    -- Si "Pistes indépendantes" est sélectionné dans le dropdown → basculer vers la vue strips
+    -- Toujours afficher le dropdown en haut (permet de changer de sélection)
+    table.insert(fs, string.format("label[0.20,%.2f;Aéroport :]", py + 0.10))
+    local viewing_disp = ap_display[1] or ""
+    for i, id in ipairs(ap_ids) do
+        if id == viewing then viewing_disp = ap_display[i]; break end
+    end
+    table.insert(fs, mkdd(2.40, py, 10.0, "myap_sel", ap_display, viewing_disp))
+    py = py + 0.68
+
+    -- Si "Pistes indépendantes" est sélectionné dans le dropdown → afficher la liste des pistes
     if viewing == "goto_strips_view" then
-        -- Afficher la liste des pistes indépendantes triées par distance
         table.insert(fs, string.format("box[0,%.2f;%.2f,0.46;#332200]", py, CFG.X_MAX))
-        table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.00, clr("#FFAA44", "Pistes independantes (sans ATC)")))
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.00, clr("#FFAA44", "Pistes independantes (sans ATC) — du plus proche au plus loin")))
         py = py + 0.58
         if #sorted_strips == 0 then
             table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#888888", "Aucune piste independante.")))
@@ -411,7 +421,7 @@ function tab_myairport(data, mtos)
         table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.02, clr("#FFAA44", "Nom")))
         table.insert(fs, string.format("label[3.0,%.2f;%s]",  py + 0.02, clr("#FFAA44", "Long.")))
         table.insert(fs, string.format("label[4.8,%.2f;%s]",  py + 0.02, clr("#FFAA44", "Larg.")))
-        table.insert(fs, string.format("label[6.5,%.2f;%s]",  py + 0.02, clr("#FFAA44", "P1 (X,Y,Z)")))
+        table.insert(fs, string.format("label[6.4,%.2f;%s]",  py + 0.02, clr("#FFAA44", "P1 (X,Y,Z)")))
         table.insert(fs, string.format("label[10.2,%.2f;%s]", py + 0.02, clr("#FFAA44", "P2 (X,Y,Z)")))
         py = py + 0.44
         local item_h = 0.50
@@ -424,13 +434,13 @@ function tab_myairport(data, mtos)
             local bpy2 = need_scroll2 and (si - 1) * item_h or py
             local len = (st.p1 and st.p2) and math.floor(math.sqrt(
                 (st.p2.x-st.p1.x)^2+(st.p2.y-st.p1.y)^2+(st.p2.z-st.p1.z)^2)+0.5) or 0
-            local p1s = st.p1 and string.format("%.0f, %.0f, %.0f", st.p1.x, st.p1.y, st.p1.z) or "?"
-            local p2s = st.p2 and string.format("%.0f, %.0f, %.0f", st.p2.x, st.p2.y, st.p2.z) or "?"
+            local p1s = st.p1 and string.format("%.0f,%.0f,%.0f", st.p1.x, st.p1.y, st.p1.z) or "?"
+            local p2s = st.p2 and string.format("%.0f,%.0f,%.0f", st.p2.x, st.p2.y, st.p2.z) or "?"
             table.insert(fs, string.format("box[0,%.2f;%.2f,%.2f;#0d0800]", bpy2, CFG.X_MAX, item_h))
             table.insert(fs, string.format("label[0.20,%.2f;%s]", bpy2+0.06, clr("#FFCC88", st.name or "?")))
             table.insert(fs, string.format("label[3.0,%.2f;%dm]",  bpy2+0.06, len))
             table.insert(fs, string.format("label[4.8,%.2f;%dm]",  bpy2+0.06, st.width or 30))
-            table.insert(fs, string.format("label[6.5,%.2f;%s]",   bpy2+0.06, clr("#AAAACC", p1s)))
+            table.insert(fs, string.format("label[6.4,%.2f;%s]",   bpy2+0.06, clr("#AAAACC", p1s)))
             table.insert(fs, string.format("label[10.2,%.2f;%s]",  bpy2+0.06, clr("#AAAACC", p2s)))
             if not need_scroll2 then py = py + item_h end
         end
@@ -439,22 +449,6 @@ function tab_myairport(data, mtos)
             table.insert(fs, scroll_bar(CFG.X_MAX - 0.26, py, list_h2, "sc_st2"))
         end
         return table.concat(fs)
-    end
-
-    table.insert(fs, string.format("label[0.20,%.2f;Aéroport :]", py + 0.10))
-    local viewing_disp = ap_display[1] or ""
-    for i, id in ipairs(ap_ids) do
-        if id == viewing then viewing_disp = ap_display[i]; break end
-    end
-    table.insert(fs, mkdd(2.40, py, 10.0, "myap_sel", ap_display, viewing_disp))
-    py = py + 0.68
-
-    -- Cas piste indépendante sélectionnée (ancienne logique strip:idx — conservée pour compatibilité)
-    if viewing and viewing:sub(1, 6) == "strip:" then
-        -- Rediriger vers la vue globale des pistes
-        data.myap_view = "goto_strips_view"
-        viewing = "goto_strips_view"
-        -- (sera géré au prochain rafraîchissement)
     end
 
     local ap = find_ap(viewing)
@@ -1027,13 +1021,13 @@ function tab_admin(data, mtos)
             table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#888888", "Aucune piste independante.")))
         else
             -- En-tête
-            local item_h = 0.96
+            local item_h = 0.50
             table.insert(fs, string.format("box[0,%.2f;%.2f,0.38;#221100]", py, CFG.X_MAX))
             table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.02, clr("#FFAA44", "Nom")))
             table.insert(fs, string.format("label[3.6,%.2f;%s]",  py + 0.02, clr("#FFAA44", "Long.")))
             table.insert(fs, string.format("label[5.4,%.2f;%s]",  py + 0.02, clr("#FFAA44", "Larg.")))
-            table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.22, clr("#FFAA44", "P1 (X,Y,Z)")))
-            table.insert(fs, string.format("label[3.6,%.2f;%s]",  py + 0.22, clr("#FFAA44", "P2 (X,Y,Z)")))
+            table.insert(fs, string.format("label[7.0,%.2f;%s]",  py + 0.02, clr("#FFAA44", "P1 (X,Y,Z)")))
+            table.insert(fs, string.format("label[10.5,%.2f;%s]", py + 0.02, clr("#FFAA44", "P2 (X,Y,Z)")))
             py = py + 0.44
             local avail = CFG.Y_MAX - py
             local need_scroll = (#strips * item_h > avail)
@@ -1043,16 +1037,16 @@ function tab_admin(data, mtos)
                 local bpy = need_scroll and (si - 1) * item_h or py
                 local len = (st.p1 and st.p2) and math.floor(math.sqrt(
                     (st.p2.x-st.p1.x)^2+(st.p2.y-st.p1.y)^2+(st.p2.z-st.p1.z)^2)+0.5) or 0
-                local p1s = st.p1 and string.format("%.0f, %.0f, %.0f",st.p1.x,st.p1.y,st.p1.z) or "?"
-                local p2s = st.p2 and string.format("%.0f, %.0f, %.0f",st.p2.x,st.p2.y,st.p2.z) or "?"
+                local p1s = st.p1 and string.format("%.0f,%.0f,%.0f", st.p1.x, st.p1.y, st.p1.z) or "?"
+                local p2s = st.p2 and string.format("%.0f,%.0f,%.0f", st.p2.x, st.p2.y, st.p2.z) or "?"
                 table.insert(fs, string.format("box[0,%.2f;%.2f,%.2f;#1a0d00]", bpy, CFG.X_MAX, item_h))
-                table.insert(fs, string.format("label[0.20,%.2f;%s]", bpy+0.04, clr("#FFCC88", st.name or "?")))
-                table.insert(fs, string.format("label[3.6,%.2f;%dm]",  bpy+0.04, len))
-                table.insert(fs, string.format("label[5.4,%.2f;%dm]",  bpy+0.04, st.width or 30))
-                table.insert(fs, string.format("label[0.20,%.2f;%s]",  bpy+0.48, clr("#AAAACC", p1s)))
-                table.insert(fs, string.format("label[3.6,%.2f;%s]",   bpy+0.48, clr("#AAAACC", p2s)))
+                table.insert(fs, string.format("label[0.20,%.2f;%s]",  bpy+0.06, clr("#FFCC88", st.name or "?")))
+                table.insert(fs, string.format("label[3.6,%.2f;%dm]",  bpy+0.06, len))
+                table.insert(fs, string.format("label[5.4,%.2f;%dm]",  bpy+0.06, st.width or 30))
+                table.insert(fs, string.format("label[7.0,%.2f;%s]",   bpy+0.06, clr("#AAAACC", p1s)))
+                table.insert(fs, string.format("label[10.5,%.2f;%s]",  bpy+0.06, clr("#AAAACC", p2s)))
                 table.insert(fs, string.format("button[12.5,%.2f;2.1,0.38;strip_del_%d;%s]",
-                    bpy+0.28, si, fe(clr("#FF6666", "✕ Suppr."))))
+                    bpy+0.06, si, fe(clr("#FF6666", "✕ Suppr."))))
                 if not need_scroll then py = py + item_h end
             end
             if need_scroll then

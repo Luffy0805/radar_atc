@@ -72,6 +72,11 @@ function scan(cpos, radius, old, trails, active_ap)
             local e = obj:get_luaentity()
             if e and e._vehicle_name then
                 local pilot = (e.driver_name and e.driver_name ~= "") and e.driver_name or nil
+                -- Si les commandes ont été transférées au co-pilote, c'est lui le pilote actif
+                local active_pilot = pilot
+                if e._command_is_given and e.co_pilot and e.co_pilot ~= "" then
+                    active_pilot = e.co_pilot
+                end
                 if pilot or e.isonground == false then
                     local pos    = obj:get_pos()
                     local vel    = obj:get_velocity() or {x=0, y=0, z=0}
@@ -81,7 +86,7 @@ function scan(cpos, radius, old, trails, active_ap)
                         obj_id   = obj_id,
                         model    = e._vehicle_name,
                         owner    = e.owner or "?",
-                        pilot    = pilot,
+                        pilot    = active_pilot,
                         pos      = {x=pos.x, y=pos.y, z=pos.z},
                         heading  = yaw2head(e._yaw or 0),
                         spd_ms   = sp,
@@ -96,7 +101,7 @@ function scan(cpos, radius, old, trails, active_ap)
                         throttle = e._power_lever and math.floor(e._power_lever + 0.5) or nil,
                         autonomy_min = calc_autonomy(e),
                         dist     = d2d(cpos, pos),
-                        has_req  = (pilot and has_atc_request(pilot, active_ap)) or false,
+                        has_req  = (active_pilot and has_atc_request(active_pilot, active_ap)) or false,
                     }
                     local src = trails[obj_id] or {}
                     local tr  = {}
