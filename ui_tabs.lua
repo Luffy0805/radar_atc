@@ -61,13 +61,8 @@ function tab_radar(data, mtos)
         if ap.runways then
             for _, rw in ipairs(ap.runways) do
                 if rw.p1 and rw.p2 then
-                    -- Teste si au moins une extrémité est dans la portée
-                    local v1x, v1y = w2r(rw.p1, cpos, radius)
-                    local v2x, v2y = w2r(rw.p2, cpos, radius)
-                    if v1x or v2x then
-                        -- Utilise w2r_clamp pour le tracé : clamp sur le BORD (pas le centre)
-                        local x1, y1 = w2r_clamp(rw.p1, cpos, radius)
-                        local x2, y2 = w2r_clamp(rw.p2, cpos, radius)
+                    local x1, y1, x2, y2 = clip_segment(rw.p1, rw.p2, cpos, radius)
+                    if x1 then
                         for t = 0, 10 do
                             local f = t / 10
                             local ix = x1 + (x2 - x1) * f; local iy = y1 + (y2 - y1) * f
@@ -76,7 +71,6 @@ function tab_radar(data, mtos)
                                     RX + ix, RY + iy, clr(rw_col, "·")))
                             end
                         end
-                        -- Label centré : utilise le milieu des coords clamped
                         local xm = (x1 + x2) / 2; local ym = (y1 + y2) / 2
                         if xm >= 0.1 and xm <= RW - 0.5 and ym >= 0.1 and ym <= RH - 0.4 then
                             table.insert(fs, string.format("label[%.2f,%.2f;%s]",
@@ -100,11 +94,8 @@ function tab_radar(data, mtos)
     local strips = get_strips()
     for _, st in ipairs(strips) do
         if st.p1 and st.p2 then
-            local v1x, v1y = w2r(st.p1, cpos, radius)
-            local v2x, v2y = w2r(st.p2, cpos, radius)
-            if v1x or v2x then
-                local sx1, sy1 = w2r_clamp(st.p1, cpos, radius)
-                local sx2, sy2 = w2r_clamp(st.p2, cpos, radius)
+            local sx1, sy1, sx2, sy2 = clip_segment(st.p1, st.p2, cpos, radius)
+            if sx1 then
                 for t = 0, 10 do
                     local f = t / 10
                     local ix = sx1 + (sx2 - sx1) * f

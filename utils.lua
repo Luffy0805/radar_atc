@@ -119,22 +119,62 @@ function w2r(tp, cp, radius)
     return sx, sy
 end
 
--- Version clip-sur-bord : si le point est hors du rectangle radar,
--- retourne le point d'intersection du segment [pt_interne→pt_externe] avec le bord.
--- Préserve la direction du segment → pas de déformation d'orientation.
+-- Clip le segment [p1→p2] (coords monde) sur le rectangle du radar.
+-- Retourne (x1,y1, x2,y2) en coords formspec, ou nil si le segment est
+-- entièrement hors du radar.
+-- Algorithme de Liang-Barsky : préserve exactement l'orientation p1→p2.
+function clip_segment(p1, p2, cp, radius)
+    local xmin, xmax = 0.05, CFG.RW - 0.25
+    local ymin, ymax = 0.05, CFG.RH - 0.25
+
+    -- Projeter les deux extrémités en coords formspec
+    local ax = CFG.RW / 2 + (p1.x - cp.x) / radius * CFG.RW / 2
+    local ay = CFG.RH / 2 - (p1.z - cp.z) / radius * CFG.RH / 2
+    local bx = CFG.RW / 2 + (p2.x - cp.x) / radius * CFG.RW / 2
+    local by = CFG.RH / 2 - (p2.z - cp.z) / radius * CFG.RH / 2
+
+    local dx = bx - ax
+    local dy = by - ay
+    local t0, t1 = 0.0, 1.0
+
+    -- Liang-Barsky : 4 bords
+    local function clip(p, q)
+        if p == 0 then return q >= 0 end  -- parallèle : dedans si q>=0
+        local r = q / p
+        if p < 0 then
+            if r > t1 then return false end
+            if r > t0 then t0 = r end
+        else
+            if r < t0 then return false end
+            if r < t1 then t1 = r end
+        end
+        return true
+    end
+
+    if not clip(-dx, ax - xmin) then return nil end
+    if not clip( dx, xmax - ax) then return nil end
+    if not clip(-dy, ay - ymin) then return nil end
+    if not clip( dy, ymax - ay) then return nil end
+
+    if t0 > t1 then return nil end
+
+    return ax + t0 * dx, ay + t0 * dy,
+           ax + t1 * dx, ay + t1 * dy
+end
+
+-- Compat : conservé pour ne pas casser d'éventuels appels existants.
+-- Préférer clip_segment pour tracer des segments.
 function w2r_clamp(tp, cp, radius)
     local dx = (tp.x - cp.x) / radius
     local dz = -(tp.z - cp.z) / radius
     local sx = CFG.RW / 2 + dx * CFG.RW / 2
     local sy = CFG.RH / 2 + dz * CFG.RH / 2
-    local x0, y0 = CFG.RW / 2, CFG.RH / 2   -- centre du radar en coords formspec
+    local x0, y0 = CFG.RW / 2, CFG.RH / 2
     local xmin, xmax = 0.05, CFG.RW - 0.25
     local ymin, ymax = 0.05, CFG.RH - 0.25
-    -- Si dans les limites, retourner tel quel
     if sx >= xmin and sx <= xmax and sy >= ymin and sy <= ymax then
         return sx, sy
     end
-    -- Clipper le segment [centre → sx,sy] sur le rectangle
     local rx, ry = sx - x0, sy - y0
     local t = 1.0
     if rx > 0 then t = math.min(t, (xmax - x0) / rx)
