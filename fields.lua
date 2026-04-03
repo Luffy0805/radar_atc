@@ -38,6 +38,12 @@ function do_fields(app, mtos, sender, fields)
         if fields.dd_radius then
             local v = tonumber(fields.dd_radius)
             if v then
+                -- Bloquer instantanément si pas de transpondeur et portée trop grande
+                if CFG.transponder_enabled and v > CFG.transponder_free_radius then
+                    if not transponder_ok(data.center_pos or mtos.pos, v) then
+                        v = CFG.transponder_free_radius
+                    end
+                end
                 data.radius = v; data.selected = 0
                 data.planes, data.trails = scan(
                     data.remote_center or data.center_pos,
@@ -312,8 +318,10 @@ function do_fields(app, mtos, sender, fields)
 
     -- ===== ATC =====
     if data.tab == "atc" then
-        if fields.atcsub_req then data.atc_sub = "requests"; return true end
-        if fields.atcsub_rad then data.atc_sub = "radio";    return true end
+        if fields.atcsub_req   then data.atc_sub = "requests"; return true end
+        if fields.atcsub_rad   then data.atc_sub = "radio";    return true end
+        if fields.atcsub_notam then data.atc_sub = "notam";    return true end
+        if fields.atcsub_log   then data.atc_sub = "log";      return true end
         if fields.atc_prev then
             data.atc_page = math.max(1, (data.atc_page or 1) - 1)
             return true
@@ -324,6 +332,30 @@ function do_fields(app, mtos, sender, fields)
             local nb_pages = math.max(1, math.ceil(nb / 3))
             data.atc_page = math.min(nb_pages, (data.atc_page or 1) + 1)
             return true
+        end
+
+        -- NOTAM
+        if fields.notam_add then
+            local txt = (fields.notam_text or ""):match("^%s*(.-)%s*$")
+            if txt ~= "" and linked then
+                local lines = get_notam(linked)
+                if #lines < (CFG.notam_max_lines or 10) then
+                    table.insert(lines, txt)
+                    save_notam(linked, lines)
+                end
+                data.notam_text = ""
+            end
+            return true
+        end
+        for ni = 1, (CFG.notam_max_lines or 10) do
+            if fields["notam_del_" .. ni] then
+                if linked then
+                    local lines = get_notam(linked)
+                    table.remove(lines, ni)
+                    save_notam(linked, lines)
+                end
+                return true
+            end
         end
 
         local state = get_shared_atc(linked)
@@ -358,6 +390,10 @@ function do_fields(app, mtos, sender, fields)
                             local verb = req.req_type == "landing" and "Atterrissage" or "Décollage"
                             minetest.chat_send_player(req.player,
                                 clr("#00FF88", atc_prefix .. " " .. verb .. " autorisé — Piste " .. pn))
+                            push_atc_log(linked, {
+                                time=os.time(), player=req.player, model=req.model or "?",
+                                req_type=req.req_type, decision="autorisé", runway=pn
+                            })
                             table.remove(reqs, ri)
                             state.requests = reqs
                             save_shared_atc(linked, state)
@@ -397,6 +433,10 @@ function do_fields(app, mtos, sender, fields)
                                     atc_prefix, pn, pp)
                             end
                             minetest.chat_send_player(req.player, clr("#44FFCC", msg))
+                            push_atc_log(linked, {
+                                time=os.time(), player=req.player, model=req.model or "?",
+                                req_type="approach", decision="autorisé", runway=pn
+                            })
                             table.remove(reqs, ri)
                             state.requests = reqs
                             save_shared_atc(linked, state)
@@ -416,6 +456,10 @@ function do_fields(app, mtos, sender, fields)
                     minetest.chat_send_player(req.player,
                         clr("#00FF88", atc_prefix .. " Autorisé(e)"))
                 end
+                push_atc_log(linked, {
+                    time=os.time(), player=req.player, model=req.model or "?",
+                    req_type=req.req_type, decision="autorisé", runway=nil
+                })
                 table.remove(reqs, ri); state.requests = reqs
                 save_shared_atc(linked, state)
                 return true
@@ -423,6 +467,10 @@ function do_fields(app, mtos, sender, fields)
             if fields["atc_ref_" .. ri] then
                 minetest.chat_send_player(req.player,
                     clr("#FF4444", atc_prefix .. " Refusé — Contactez la tour."))
+                push_atc_log(linked, {
+                    time=os.time(), player=req.player, model=req.model or "?",
+                    req_type=req.req_type, decision="refusé", runway=nil
+                })
                 table.remove(reqs, ri); state.requests = reqs
                 save_shared_atc(linked, state)
                 return true

@@ -123,7 +123,7 @@ minetest.register_chatcommand("atc", {
 
         -- Anti-doublon
         for _, r in ipairs(state.requests) do
-            if r.player == name and r.req_type == action and (os.time() - (r.time or 0)) < 15 then
+            if r.player == name and r.req_type == action and (os.time() - (r.time or 0)) < CFG.req_cmd_cooldown then
                 return false, clr("#FFAA44", "[ATC] Demande déjà envoyée, patientez.")
             end
         end
@@ -151,5 +151,51 @@ minetest.register_chatcommand("atc", {
         return true, clr("#FFFF44",
             "[ATC " .. aid .. "] Demande " .. tf[action] .. " envoyée"
             .. (has and "" or " (aucune tour active)") .. ".")
+    end,
+})
+
+-- =============================================================
+--  COMMANDE /notam  —  Consultation des avis aux pilotes
+-- =============================================================
+minetest.register_chatcommand("notam", {
+    params = "<ID_aéroport>",
+    description = table.concat({
+        "Consulter les NOTAM (avis aux pilotes) d'un aéroport.",
+        "  /notam <ID>     — affiche les NOTAM de l'aéroport",
+        "  /notam nearest  — affiche les NOTAM de l'aéroport le plus proche",
+    }, "\n"),
+    func = function(name, param)
+        local arg = param:match("^%s*(.-)%s*$")
+        if arg == "" then
+            return false, "Usage : /notam <ID_aéroport> ou /notam nearest"
+        end
+
+        local ap
+        if arg:lower() == "nearest" then
+            local player = minetest.get_player_by_name(name)
+            if not player then return false, "Joueur introuvable." end
+            ap = nearest_ap(player:get_pos())
+            if not ap then
+                return true, clr("#FFAA44", "[NOTAM] Aucun aéroport enregistré.")
+            end
+        else
+            ap = find_ap(arg:upper())
+            if not ap then
+                return false, clr("#FF4444", "[NOTAM] Aéroport '" .. arg:upper() .. "' inconnu.")
+            end
+        end
+
+        local lines = get_notam(ap.id)
+        local header = clr("#88CCFF", "=== NOTAM [" .. ap.id .. "] " .. ap.name .. " ===")
+        minetest.chat_send_player(name, header)
+        if #lines == 0 then
+            minetest.chat_send_player(name, clr("#888888", "  Aucun NOTAM actif."))
+        else
+            for i, line in ipairs(lines) do
+                minetest.chat_send_player(name,
+                    clr("#FFFF88", string.format("  %d. %s", i, line)))
+            end
+        end
+        return true
     end,
 })

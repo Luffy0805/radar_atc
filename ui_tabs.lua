@@ -181,8 +181,30 @@ function tab_radar(data, mtos)
     py = py + 0.52
 
     table.insert(fs, string.format("label[%.2f,%.2f;Portée :]", PX, py + 0.10))
-    table.insert(fs, mkdd(PX + 1.90, py, PW - 1.95, "dd_radius", CFG.radius_values, radius))
+    -- Filtrer les portées selon disponibilité du transpondeur
+    local avail_radii = {}
+    local t_present = (not CFG.transponder_enabled) or transponder_ok(data.center_pos or mtos.pos, 99999)
+    for _, r in ipairs(CFG.radius_values) do
+        if t_present or r <= CFG.transponder_free_radius then
+            table.insert(avail_radii, r)
+        end
+    end
+    -- S'assurer que la portée actuelle est dans la liste
+    local cur_radius = radius
+    if not t_present and cur_radius > CFG.transponder_free_radius then
+        cur_radius = CFG.transponder_free_radius
+        data.radius = cur_radius
+    end
+    table.insert(fs, mkdd(PX + 1.90, py, PW - 1.95, "dd_radius", avail_radii, cur_radius))
     py = py + 0.68
+
+    -- Avertissement transpondeur si portées supérieures bloquées
+    if CFG.transponder_enabled and not t_present then
+        table.insert(fs, string.format("box[%.2f,%.2f;%.2f,0.38;#330000]", PX, py, PW))
+        table.insert(fs, string.format("label[%.2f,%.2f;%s]", PX + 0.10, py - 0.02,
+            clr("#FF4444", "⚠ Transpondeur requis (>" .. CFG.transponder_free_radius .. "m)")))
+        py = py + 0.44
+    end
 
     local n = #planes
     table.insert(fs, string.format("box[%.2f,%.2f;%.2f,0.38;#001a00]", PX, py, PW))
@@ -580,16 +602,25 @@ function tab_atc(data, mtos)
     for _, r in ipairs(reqs) do
         if r.status == "hold" then nh = nh + 1 else nl = nl + 1 end
     end
-    local lq = "Demandes" .. (nl > 0 and " [" .. nl .. "]" or "") .. (nh > 0 and " (" .. nh .. "⏸)" or "")
-    local lr = "Radio" .. (#convs > 0 and " [" .. #convs .. "]" or "")
-    table.insert(fs, string.format("box[0,%.2f;7.10,0.46;%s]", py,
-        sub == "requests" and "#004400" or "#002200"))
-    table.insert(fs, string.format("button[0,%.2f;7.10,0.46;atcsub_req;%s]", py,
-        fe(clr(sub == "requests" and "#FFFFFF" or "#88FF88", lq))))
-    table.insert(fs, string.format("box[7.20,%.2f;7.60,0.46;%s]", py,
-        sub == "radio" and "#004400" or "#002200"))
-    table.insert(fs, string.format("button[7.20,%.2f;7.60,0.46;atcsub_rad;%s]", py,
-        fe(clr(sub == "radio" and "#FFFFFF" or "#88FF88", lr))))
+    local lq     = "Demandes" .. (nl > 0 and " [" .. nl .. "]" or "") .. (nh > 0 and " (" .. nh .. "⏸)" or "")
+    local lr     = "Radio"    .. (#convs > 0 and " [" .. #convs .. "]" or "")
+    local ln     = "NOTAM"
+    local ll     = "Log"
+    local tabs_atc = {
+        {id="req",   lbl=lq},
+        {id="rad",   lbl=lr},
+        {id="notam", lbl=ln},
+        {id="log",   lbl=ll},
+    }
+    local tw = CFG.X_MAX / #tabs_atc
+    for i, t in ipairs(tabs_atc) do
+        local act = (sub == t.id) or (t.id == "req" and sub == "requests") or (t.id == "rad" and sub == "radio")
+        table.insert(fs, string.format("box[%.2f,%.2f;%.2f,0.46;%s]",
+            (i-1)*tw, py, tw - 0.10, act and "#004400" or "#002200"))
+        table.insert(fs, string.format("button[%.2f,%.2f;%.2f,0.46;atcsub_%s;%s]",
+            (i-1)*tw, py, tw - 0.10, t.id,
+            fe(clr(act and "#FFFFFF" or "#88FF88", t.lbl))))
+    end
     py = py + 0.52
 
     -- ===================== DEMANDES =====================
@@ -633,7 +664,7 @@ function tab_atc(data, mtos)
             local age = os.time() - (req.time or 0)
             local bg, fg
             if req.status == "hold" then bg = "#1a1a00"; fg = "#CCCC00"
-            elseif age < 90 then         bg = "#1a0000"; fg = "#FFFF44"
+            elseif age < CFG.req_stale_age then         bg = "#1a0000"; fg = "#FFFF44"
             else                         bg = "#111111"; fg = "#888888" end
 
             local tlab = {landing="Atterrissage", takeoff="Décollage", flyover="Survol", approach="Approche"}
@@ -811,6 +842,80 @@ function tab_atc(data, mtos)
             CX, py, CW - 3.0, data.radio_sel, fe(data.radio_draft or "")))
         table.insert(fs, string.format("button[%.2f,%.2f;2.8,0.62;radio_send_%d;%s]",
             CX + CW - 2.9, py, data.radio_sel, fe(clr("#00FFFF", "Envoyer ▶"))))
+    end
+
+    -- ===================== NOTAM =====================
+    if sub == "notam" then
+        local lines = linked and get_notam(linked) or {}
+        table.insert(fs, string.format("box[0,%.2f;%.2f,0.40;#002233]", py, CFG.X_MAX))
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py - 0.04,
+            clr("#88CCFF", "NOTAM — Avis aux pilotes")))
+        py = py + 0.48
+        if not linked then
+            table.insert(fs, string.format("label[0.20,%.2f;%s]", py,
+                clr("#888888", "Aucun aéroport lié.")))
+            return table.concat(fs)
+        end
+        -- Liste des lignes existantes
+        if #lines == 0 then
+            table.insert(fs, string.format("label[0.20,%.2f;%s]", py,
+                clr("#555555", "Aucun NOTAM actif.")))
+            py = py + 0.40
+        else
+            for ni, line in ipairs(lines) do
+                local bpy = py
+                table.insert(fs, string.format("box[0,%.2f;%.2f,0.44;#001a22]", bpy, CFG.X_MAX))
+                table.insert(fs, string.format("label[0.30,%.2f;%s]", bpy + 0.00,
+                    clr("#FFFFFF", fe(line:sub(1, 80)))))
+                table.insert(fs, string.format("button[13.4,%.2f;1.2,0.38;notam_del_%d;%s]",
+                    bpy + 0.03, ni, fe(clr("#FF6666", "✕"))))
+                py = py + 0.46
+                if py + 0.80 > CFG.Y_MAX then break end
+            end
+        end
+        -- Champ d'ajout
+        if #lines < (CFG.notam_max_lines or 10) and py + 0.80 <= CFG.Y_MAX then
+            table.insert(fs, string.format("box[0,%.2f;%.2f,0.70;#001122]", py, CFG.X_MAX))
+            table.insert(fs, string.format("field[0.50,%.2f;11.5,0.62;notam_text;;%s]",
+                py + 0.40, fe(data.notam_text or "")))
+            table.insert(fs, string.format("button[11.9,%.2f;2.7,0.56;notam_add;%s]",
+                py + 0.07, fe(clr("#44FF88", "+ Ajouter"))))
+        end
+    end
+
+    -- ===================== LOG =====================
+    if sub == "log" then
+        local log = linked and get_atc_log(linked) or {}
+        table.insert(fs, string.format("box[0,%.2f;%.2f,0.40;#002200]", py, CFG.X_MAX))
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py - 0.04,
+            clr("#88FF88", "Dernières décisions ATC")))
+        py = py + 0.48
+        if not linked then
+            table.insert(fs, string.format("label[0.20,%.2f;%s]", py,
+                clr("#888888", "Aucun aéroport lié.")))
+            return table.concat(fs)
+        end
+        if #log == 0 then
+            table.insert(fs, string.format("label[0.20,%.2f;%s]", py,
+                clr("#555555", "Aucune décision enregistrée.")))
+        else
+            local type_labels = {
+                landing="Atterrissage", takeoff="Décollage", flyover="Survol", approach="Approche"
+            }
+            for _, entry in ipairs(log) do
+                local dc = entry.decision == "autorisé" and "#00FF88" or "#FF4444"
+                local tstr = os.date("%H:%M", entry.time or 0)
+                local rw_s = entry.runway and (" piste " .. entry.runway) or ""
+                local tl   = type_labels[entry.req_type] or entry.req_type
+                local line = string.format("%s  %s  %s (%s)  %s%s",
+                    tstr, clr(dc, entry.decision), fe(entry.player),
+                    fe(entry.model), tl, rw_s)
+                table.insert(fs, string.format("box[0,%.2f;%.2f,0.44;#001500]", py, CFG.X_MAX))
+                table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.04, line))
+                py = py + 0.46
+                if py + 0.46 > CFG.Y_MAX then break end
+            end
+        end
     end
 
     return table.concat(fs)
@@ -1088,16 +1193,12 @@ function tab_admin(data, mtos)
 end
 
 -- =============================================================
---  CONSTANTES ET HELPERS — REQUÊTES ATC
+--  HELPERS — REQUÊTES ATC
 -- =============================================================
 
--- Durée en secondes après laquelle une requête devient "ancienne" (grisée)
-REQ_STALE_AGE = 90
-
--- Vérifie si un avion (player+model) peut envoyer une nouvelle requête à une ATC (airport_id).
--- Renvoie true si autorisé, false + message sinon.
--- Règle : un avion ne peut pas envoyer la même requête à la même ATC,
---         SAUF si la requête précédente est ancienne (>= REQ_STALE_AGE secondes).
+-- Vérifie si un avion peut envoyer une nouvelle requête à une ATC.
+-- Règle : interdit si une requête identique (même joueur+modèle+type)
+-- existe et est encore fraîche (< CFG.req_stale_age secondes).
 function can_send_request(airport_id, player, model, req_type)
     local state = get_shared_atc(airport_id)
     local reqs  = state.requests or {}
@@ -1105,8 +1206,8 @@ function can_send_request(airport_id, player, model, req_type)
     for _, r in ipairs(reqs) do
         if r.player == player and (r.model or "") == (model or "") and r.req_type == req_type then
             local age = now - (r.time or 0)
-            if age < REQ_STALE_AGE then
-                return false, "Demande déjà en cours (réessayez dans " .. (REQ_STALE_AGE - age) .. "s)"
+            if age < CFG.req_stale_age then
+                return false, "Demande déjà en cours (réessayez dans " .. (CFG.req_stale_age - age) .. "s)"
             end
         end
     end

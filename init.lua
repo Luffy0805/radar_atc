@@ -15,6 +15,7 @@ active_nodes = {}
 
 dofile(minetest.get_modpath("radar_atc") .. "/storage.lua")
 dofile(minetest.get_modpath("radar_atc") .. "/utils.lua")
+dofile(minetest.get_modpath("radar_atc") .. "/transponder.lua")
 dofile(minetest.get_modpath("radar_atc") .. "/scan.lua")
 dofile(minetest.get_modpath("radar_atc") .. "/ui_tabs.lua")
 dofile(minetest.get_modpath("radar_atc") .. "/fields.lua")
@@ -71,7 +72,6 @@ laptop.register_app("radar_atc", {
         data.radius     = data.radius or CFG.default_radius
         local linked    = data.active_airport or data.linked_airport
 
-        -- Scan avions
         local old_sel = (data.selected and data.selected > 0 and data.planes)
                         and data.planes[data.selected] or nil
         local new_planes, new_trails = scan(cpos, data.radius, data.planes, data.trails, linked)

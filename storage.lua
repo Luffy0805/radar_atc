@@ -76,3 +76,36 @@ end
 function save_strips()
     ST:set_string("indep_strips_v1", minetest.serialize(_strip_cache or {}))
 end
+
+-- =============================================================
+--  NOTAM  (avis aux pilotes, par aéroport)
+--  Structure : liste de strings, une par ligne
+-- =============================================================
+function get_notam(airport_id)
+    if not airport_id then return {} end
+    local r = ST:get_string("notam_" .. airport_id)
+    return (r ~= "" and minetest.deserialize(r)) or {}
+end
+
+function save_notam(airport_id, lines)
+    if not airport_id then return end
+    ST:set_string("notam_" .. airport_id, minetest.serialize(lines or {}))
+end
+
+-- =============================================================
+--  LOG ATC  (dernières autorisations/refus, par aéroport)
+--  Structure : {time, player, model, req_type, decision, runway}
+-- =============================================================
+function get_atc_log(airport_id)
+    if not airport_id then return {} end
+    local r = ST:get_string("atclog_" .. airport_id)
+    return (r ~= "" and minetest.deserialize(r)) or {}
+end
+
+function push_atc_log(airport_id, entry)
+    if not airport_id then return end
+    local log = get_atc_log(airport_id)
+    table.insert(log, 1, entry)  -- plus récent en premier
+    while #log > (CFG.atc_log_max or 10) do table.remove(log) end
+    ST:set_string("atclog_" .. airport_id, minetest.serialize(log))
+end
