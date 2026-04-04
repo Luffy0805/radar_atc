@@ -10,10 +10,22 @@
 -- Ordre de chargement important : les dépendances en premier
 dofile(minetest.get_modpath("radar_atc") .. "/config.lua")
 
+-- =============================================================
+--  PRIVILÈGE ATC
+--  Permet d'accéder à l'admin sans mot de passe,
+--  de voir et modifier les mots de passe depuis l'interface.
+-- =============================================================
+minetest.register_privilege("atc", {
+    description = "Accès ATC : administration radar sans mot de passe, gestion des mdp",
+    give_to_singleplayer = false,
+})
+
 -- Table des radars actifs (globale, référencée par storage.lua et commands.lua)
 active_nodes = {}
 
 dofile(minetest.get_modpath("radar_atc") .. "/storage.lua")
+-- Charger les mots de passe persistés (écrasent les valeurs par défaut de config.lua)
+load_passwords_into_cfg()
 dofile(minetest.get_modpath("radar_atc") .. "/utils.lua")
 dofile(minetest.get_modpath("radar_atc") .. "/transponder.lua")
 dofile(minetest.get_modpath("radar_atc") .. "/scan.lua")
@@ -56,6 +68,7 @@ laptop.register_app("radar_atc", {
 
     receive_fields_func = function(app, mtos, sender, fields)
         local data = mtos.bdev:get_app_storage('ram', 'radar')
+        data._player_name = sender:get_player_name()  -- pour vérif priv dans tab_admin
         data.center_pos = data.center_pos or {x=mtos.pos.x, y=mtos.pos.y, z=mtos.pos.z}
         active_nodes[pk(mtos.pos)] = {
             pos        = {x=mtos.pos.x, y=mtos.pos.y, z=mtos.pos.z},

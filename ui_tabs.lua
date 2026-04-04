@@ -183,7 +183,7 @@ function tab_radar(data, mtos)
     table.insert(fs, string.format("label[%.2f,%.2f;Portée :]", PX, py + 0.10))
     -- Filtrer les portées selon disponibilité du transpondeur
     local avail_radii = {}
-    local t_present = (not CFG.transponder_enabled) or transponder_ok(data.center_pos or mtos.pos, 99999)
+    local t_present = (not CFG.transponder_enabled) or transponder_ok(data.remote_center or data.center_pos or mtos.pos, CFG.transponder_free_radius + 1)
     for _, r in ipairs(CFG.radius_values) do
         if t_present or r <= CFG.transponder_free_radius then
             table.insert(avail_radii, r)
@@ -198,11 +198,12 @@ function tab_radar(data, mtos)
     table.insert(fs, mkdd(PX + 1.90, py, PW - 1.95, "dd_radius", avail_radii, cur_radius))
     py = py + 0.68
 
-    -- Avertissement transpondeur si portées supérieures bloquées
-    if CFG.transponder_enabled and not t_present then
+    -- Avertissement transpondeur : uniquement quand la portée sélectionnée
+    -- atteint exactement la limite (pas pour 500 ou 750 qui sont en dessous)
+    if CFG.transponder_enabled and not t_present and cur_radius == CFG.transponder_free_radius then
         table.insert(fs, string.format("box[%.2f,%.2f;%.2f,0.38;#330000]", PX, py, PW))
         table.insert(fs, string.format("label[%.2f,%.2f;%s]", PX + 0.10, py - 0.02,
-            clr("#FF4444", "⚠ Transpondeur requis (>" .. CFG.transponder_free_radius .. "m)")))
+            clr("#FF4444", "⚠ Transpondeur requis pour dépasser " .. CFG.transponder_free_radius .. "m")))
         py = py + 0.44
     end
 
@@ -500,17 +501,40 @@ function tab_myairport(data, mtos)
             py, fe(clr("#FFAA00", "⟵ Revenir à cet aéroport lié"))))
         py = py + 0.58
     elseif data.myap_ctrl_mode == viewing then
-        table.insert(fs, string.format("box[0.20,%.2f;9.0,2.70;#110022]", py))
-        table.insert(fs, string.format("label[0.50,%.2f;%s]", py + 0.02,
-            clr("#CC88FF", "Mot de passe requis pour prendre le contrôle de [" .. viewing .. "] :")))
-        table.insert(fs, string.format("pwdfield[0.65,%.2f;5.5,0.80;ctrl_pw;Mot de passe]", py + 1.10))
-        table.insert(fs, string.format("button[5.85,%.2f;2.7,0.62;ctrl_confirm;Confirmer]", py + 0.86))
-        table.insert(fs, string.format("button[0.40,%.2f;2.5,0.50;ctrl_cancel;Annuler]", py + 1.85))
-        if data.myap_ctrl_err then
-            table.insert(fs, string.format("label[3.10,%.2f;%s]", py + 1.75,
-                clr("#FF4444", data.myap_ctrl_err)))
+        local has_link = link_antenna_ok(mtos.pos)
+        if has_link then
+            -- Antenne de liaison détectée : connexion directe sans mot de passe
+            local ap_name_link = ap and ap.name or viewing
+            table.insert(fs, string.format("box[0.20,%.2f;%.2f,1.80;#001a00]", py, CFG.X_MAX - 0.40))
+            table.insert(fs, string.format("label[0.50,%.2f;%s]", py + 0.06,
+                clr("#88CCFF", "📡 Antenne de liaison  ") ..
+                clr("#FFFF44", "[" .. viewing .. "]") ..
+                "  " .. clr("#AACCFF", fe(ap_name_link))))
+            table.insert(fs, string.format("label[0.50,%.2f;%s]", py + 0.56,
+                clr("#00FF88", "Connexion sans mot de passe autorisée.")))
+            table.insert(fs, string.format("button[0.50,%.2f;4.5,0.54;ctrl_confirm;%s]",
+                py + 1.12, fe(clr("#00FF88", "⊕ Prendre le contrôle"))))
+            table.insert(fs, string.format("button[5.20,%.2f;2.5,0.54;ctrl_cancel;%s]",
+                py + 1.12, fe(clr("#FFAA44", "Annuler"))))
+            py = py + 1.82
+        else
+            -- Pas d'antenne : demande le mot de passe
+            table.insert(fs, string.format("box[0.20,%.2f;9.0,2.70;#110022]", py))
+            local ap_pw     = find_ap(viewing)
+            local ap_pw_nom = ap_pw and fe(ap_pw.name) or viewing
+            table.insert(fs, string.format("label[0.50,%.2f;%s]", py + 0.02,
+                clr("#CC88FF", "Mot de passe requis — ") ..
+                clr("#FFFF44", "[" .. viewing .. "]") ..
+                "  " .. clr("#AAAACC", ap_pw_nom) .. ":"))
+            table.insert(fs, string.format("pwdfield[0.65,%.2f;5.5,0.80;ctrl_pw;Mot de passe]", py + 1.10))
+            table.insert(fs, string.format("button[5.85,%.2f;2.7,0.62;ctrl_confirm;Confirmer]", py + 0.86))
+            table.insert(fs, string.format("button[0.40,%.2f;2.5,0.50;ctrl_cancel;Annuler]", py + 1.85))
+            if data.myap_ctrl_err then
+                table.insert(fs, string.format("label[3.10,%.2f;%s]", py + 1.75,
+                    clr("#FF4444", data.myap_ctrl_err)))
+            end
+            py = py + 2.72
         end
-        py = py + 2.72
     else
         table.insert(fs, string.format("button[0.20,%.2f;6.0,0.50;ctrl_request;%s]",
             py, fe(clr("#88FFFF", "⊕ Prendre le contrôle de [" .. viewing .. "]"))))
@@ -928,7 +952,11 @@ function tab_admin(data, mtos)
     local fs = {}
     local py = CFG.CY
 
-    if not data.admin_ok then
+    -- Écran de connexion (mot de passe)
+    -- Vérifier le déverrouillage pour CE joueur spécifique
+    local _pname_check = data._player_name or ""
+    data._admin_ok = data._admin_ok or {}
+    if not data._admin_ok[_pname_check] then
         table.insert(fs, string.format("box[0,%.2f;10,3.40;#110011]", py))
         table.insert(fs, string.format("label[0.30,%.2f;%s]", py + 0.05,
             clr("#CC88CC", "Administration — Mot de passe requis")))
@@ -941,38 +969,114 @@ function tab_admin(data, mtos)
         return table.concat(fs)
     end
 
-    local view = data.av or "list"
+    local view    = data.av or "list"
+    local pname_ui  = data._player_name or ""
+    local is_atc_ui = minetest.check_player_privs(pname_ui, {atc=true})
+
+    -- ---- VUE GESTION MOTS DE PASSE (priv atc uniquement) ----
+    if view == "pw_manage" then
+        table.insert(fs, string.format("box[0,%.2f;%.2f,0.46;#1a0033]", py, CFG.X_MAX))
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.03,
+            clr("#CC88FF", "🔑 Gestion des mots de passe")))
+        table.insert(fs, string.format("button[12.2,%.2f;2.4,0.38;av_back;← Retour]", py + 0.04))
+        py = py + 0.62
+
+        -- Mot de passe admin
+        table.insert(fs, string.format("box[0,%.2f;%.2f,0.36;#110022]", py, CFG.X_MAX))
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.04,
+            clr("#AAAAFF", "Mot de passe Admin :  ") ..
+            clr("#FFFF88", minetest.formspec_escape(CFG.radar_password_admin))))
+        py = py + 0.46
+        table.insert(fs, string.format(
+            "field[0.20,%.2f;9.0,0.62;new_pw_admin;Nouveau mot de passe admin;]", py))
+        table.insert(fs, string.format(
+            "button[9.40,%.2f;5.0,0.62;save_pw_admin;✔ Enregistrer]", py))
+        py = py + 0.88
+
+        -- Mot de passe distant
+        table.insert(fs, string.format("box[0,%.2f;%.2f,0.36;#110022]", py, CFG.X_MAX))
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.04,
+            clr("#AAAAFF", "Mot de passe Distant : ") ..
+            clr("#FFFF88", minetest.formspec_escape(CFG.radar_password_remote))))
+        py = py + 0.46
+        table.insert(fs, string.format(
+            "field[0.20,%.2f;9.0,0.62;new_pw_remote;Nouveau mot de passe distant;]", py))
+        table.insert(fs, string.format(
+            "button[9.40,%.2f;5.0,0.62;save_pw_remote;✔ Enregistrer]", py))
+        py = py + 0.90
+
+        if data.pw_saved_msg then
+            table.insert(fs, string.format("label[0.20,%.2f;%s]", py,
+                clr(data.pw_saved_msg:sub(1,1) == "✔" and "#44FF44" or "#FF4444",
+                    data.pw_saved_msg)))
+        end
+        return table.concat(fs)
+    end
 
     -- ---- LISTE AÉROPORTS ----
     if view == "list" then
         local airports = get_airports()
+
+        -- Barre de titre
         table.insert(fs, string.format("box[0,%.2f;%.2f,0.46;#002244]", py, CFG.X_MAX))
-        table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.00, clr("#88CCFF", "Aéroports enregistrés")))
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.00,
+            clr("#88CCFF", "Aéroports enregistrés")))
         table.insert(fs, string.format("button[11.2,%.2f;3.4,0.38;new_ap;+ Nouvel aéroport]", py + 0.04))
         table.insert(fs, string.format("button[7.5,%.2f;3.5,0.38;goto_strips;Pistes independantes →]", py + 0.04))
-        py = py + 0.65
+        if is_atc_ui then
+            table.insert(fs, string.format("button[0.20,%.2f;3.0,0.38;av_pw_manage;%s]",
+                py + 0.04, fe(clr("#CC88FF", "🔑 Mots de passe"))))
+        end
+        py = py + 0.58
+
+        -- Pagination (5 par page)
+        local PER_PAGE = 10
+        local nb_pages  = math.max(1, math.ceil(#airports / PER_PAGE))
+        local page      = data.ap_page or 1
+        if page > nb_pages then page = nb_pages end
+        if page < 1       then page = 1        end
+        data.ap_page    = page
+        local idx_start = (page - 1) * PER_PAGE + 1
+        local idx_end   = math.min(page * PER_PAGE, #airports)
+
+        if nb_pages > 1 then
+            table.insert(fs, string.format("box[0,%.2f;%.2f,0.42;#001a33]", py, CFG.X_MAX))
+            if page > 1 then
+                table.insert(fs, string.format("button[0,%.2f;2.5,0.42;ap_prev;%s]",
+                    py, fe(clr("#88CCFF", "◀ Préc."))))
+            end
+            table.insert(fs, string.format("label[3.0,%.2f;%s]", py + 0.02,
+                clr("#AAAAFF", string.format("Page %d / %d  (%d aéroports)",
+                    page, nb_pages, #airports))))
+            if page < nb_pages then
+                table.insert(fs, string.format("button[%.2f,%.2f;2.5,0.42;ap_next;%s]",
+                    CFG.X_MAX - 2.5, py, fe(clr("#88CCFF", "Suiv. ▶"))))
+            end
+            py = py + 0.48
+        end
+
         if #airports == 0 then
-            table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#888888", "Aucun aéroport.")))
+            table.insert(fs, string.format("label[0.20,%.2f;%s]", py,
+                clr("#888888", "Aucun aéroport.")))
         else
             local item_h = 0.70
-            local avail  = CFG.Y_MAX - py
-            local need_scroll = (#airports * item_h > avail)
-            local list_h = math.min(#airports * item_h, avail)
-            if need_scroll then table.insert(fs, scroll_box(0, py, CFG.X_MAX - 0.28, list_h, "sc_ap")) end
-            for i, ap in ipairs(airports) do
-                local nrw = ap.runways and #ap.runways or 0
-                local bpy = need_scroll and (i - 1) * item_h or py
-                table.insert(fs, string.format("box[0,%.2f;%.2f,%.2f;#001122]", bpy, CFG.X_MAX, item_h))
-                table.insert(fs, string.format("label[0.20,%.2f;%s]",
-                    bpy + 0.00, minetest.colorize("#88CCFF", fe(string.format("[%s] %s — %d piste%s", ap.id, ap.name, nrw, nrw > 1 and "s" or "")))))
-                table.insert(fs, string.format("button[10.40,%.2f;2.0,0.38;ap_rw_%d;Pistes →]", bpy + 0.06, i))
-                table.insert(fs, string.format("button[12.50,%.2f;2.1,0.38;ap_del_%d;%s]",
-                    bpy + 0.06, i, fe(clr("#FF6666", "✕ Suppr."))))
-                if not need_scroll then py = py + item_h end
-            end
-            if need_scroll then
-                table.insert(fs, "scroll_container_end[]")
-                table.insert(fs, scroll_bar(CFG.X_MAX - 0.26, py, list_h, "sc_ap"))
+            for i = idx_start, idx_end do
+                local ap = airports[i]
+                if ap then
+                    local nrw = ap.runways and #ap.runways or 0
+                    table.insert(fs, string.format("box[0,%.2f;%.2f,%.2f;#001122]",
+                        py, CFG.X_MAX, item_h))
+                    table.insert(fs, string.format("label[0.20,%.2f;%s]",
+                        py + 0.00, minetest.colorize("#88CCFF", fe(string.format(
+                            "[%s] %s — %d piste%s",
+                            ap.id, ap.name, nrw, nrw > 1 and "s" or "")))))
+                    table.insert(fs, string.format(
+                        "button[10.40,%.2f;2.0,0.38;ap_rw_%d;Pistes →]", py + 0.06, i))
+                    table.insert(fs, string.format(
+                        "button[12.50,%.2f;2.1,0.38;ap_del_%d;%s]",
+                        py + 0.06, i, fe(clr("#FF6666", "✕ Suppr."))))
+                    py = py + item_h
+                end
             end
         end
         return table.concat(fs)
@@ -1242,7 +1346,11 @@ function build_fs(app, mtos)
             if nl > 0 then fg = act and "#FFFFFF" or "#FF6666"; lbl = lbl .. " [" .. nl .. "]"
             elseif nh > 0 then fg = act and "#FFFFFF" or "#FFFF44"; lbl = lbl .. " [" .. nh .. "⏸]" end
         end
-        if t.id == "admin" then lbl = lbl .. (data.admin_ok and "" or " 🔒") end
+        if t.id == "admin" then
+            local _pn = data._player_name or ""
+            data._admin_ok = data._admin_ok or {}
+            lbl = lbl .. (data._admin_ok[_pn] and "" or " 🔒")
+        end
         table.insert(fs, string.format("box[%.2f,%.2f;3.62,%.2f;%s]", tx, CFG.TAB_Y, CFG.TAB_H, bg))
         table.insert(fs, string.format("button[%.2f,%.2f;3.62,%.2f;tab_%s;%s]",
             tx, CFG.TAB_Y, CFG.TAB_H, t.id, fe(clr(fg, lbl))))

@@ -19,9 +19,18 @@ function do_fields(app, mtos, sender, fields)
     for _, t in ipairs({"radar","myap","atc","admin"}) do
         if fields["tab_" .. t] then
             if data.tab == "admin" and t ~= "admin" then
-                data.admin_ok = false; data.admin_err = nil
+                -- reset déverrouillage pour ce joueur quand il quitte l'onglet admin
+                local pn = data._player_name or ""
+                data._admin_ok = data._admin_ok or {}
+                data._admin_ok[pn] = false
+                data.admin_err = nil
             end
-            if t == "admin" then data.admin_ok = false; data.admin_err = nil end
+            if t == "admin" then
+                local pn = data._player_name or ""
+                data._admin_ok = data._admin_ok or {}
+                data._admin_ok[pn] = false
+                data.admin_err = nil
+            end
             data.tab = t
             return true
         end
@@ -40,7 +49,7 @@ function do_fields(app, mtos, sender, fields)
             if v then
                 -- Bloquer instantanément si pas de transpondeur et portée trop grande
                 if CFG.transponder_enabled and v > CFG.transponder_free_radius then
-                    if not transponder_ok(data.center_pos or mtos.pos, v) then
+                    if not transponder_ok(data.remote_center or data.center_pos or mtos.pos, v) then
                         v = CFG.transponder_free_radius
                     end
                 end
@@ -97,9 +106,13 @@ function do_fields(app, mtos, sender, fields)
             return true
         end
         if fields.ctrl_confirm then
-            if fields.ctrl_pw == CFG.radar_password_remote then
-                local view = data.myap_ctrl_mode
-                local ap   = find_ap(view)
+            local view     = data.myap_ctrl_mode
+            local has_link = link_antenna_ok(mtos.pos)
+            local has_pw   = (fields.ctrl_pw == CFG.radar_password_remote)
+            -- Seuls le mot de passe correct ou une antenne de liaison autorisent
+            -- (le priv atc ne bypass PAS le mot de passe remote)
+            if has_pw or has_link then
+                local ap = find_ap(view)
                 if ap and ap.pos then
                     data.active_airport = view
                     data.remote_center  = {x=ap.pos.x, y=ap.pos.y, z=ap.pos.z}
@@ -159,18 +172,73 @@ function do_fields(app, mtos, sender, fields)
     if data.tab == "admin" then
         if fields.admin_login then
             if fields.admin_pw == CFG.radar_password_admin then
-                data.admin_ok = true; data.admin_err = nil; data.av = "list"
-            else data.admin_err = "Mot de passe incorrect." end
+                data._admin_ok = data._admin_ok or {}
+                data._admin_ok[data._player_name or ""] = true
+                data.admin_err = nil; data.av = "list"
+            else
+                data.admin_err = "Mot de passe incorrect."
+            end
             return true
         end
-        if not data.admin_ok then return true end
+        -- Vérifier que CE joueur précis a déverrouillé (pas un autre joueur du même laptop)
+        local _cur_pname = data._player_name or ""
+        data._admin_ok = data._admin_ok or {}
+        if not data._admin_ok[_cur_pname] then return true end
 
+        -- Changement de mots de passe (réservé aux joueurs avec priv atc)
+        local pname_admin = data._player_name or ""
+        if minetest.check_player_privs(pname_admin, {atc=true}) then
+            if fields.save_pw_admin and fields.new_pw_admin then
+                local pw = fields.new_pw_admin:match("^%s*(.-)%s*$")
+                if pw ~= "" then
+                    CFG.radar_password_admin = pw
+                    local stored = get_passwords()
+                    stored.admin = pw
+                    save_passwords(stored)
+                    data.pw_saved_msg = "✔ Mot de passe admin mis à jour."
+                else
+                    data.pw_saved_msg = "✗ Mot de passe vide ignoré."
+                end
+                return true
+            end
+            if fields.save_pw_remote and fields.new_pw_remote then
+                local pw = fields.new_pw_remote:match("^%s*(.-)%s*$")
+                if pw ~= "" then
+                    CFG.radar_password_remote = pw
+                    local stored = get_passwords()
+                    stored.remote = pw
+                    save_passwords(stored)
+                    data.pw_saved_msg = "✔ Mot de passe distant mis à jour."
+                else
+                    data.pw_saved_msg = "✗ Mot de passe vide ignoré."
+                end
+                return true
+            end
+        end
+
+        -- Navigation vers gestion mots de passe
+        if fields.av_pw_manage then
+            data.av = "pw_manage"; data.pw_saved_msg = nil
+            return true
+        end
+        -- Pagination liste aéroports
+        if fields.ap_prev then
+            data.ap_page = math.max(1, (data.ap_page or 1) - 1)
+            return true
+        end
+        if fields.ap_next then
+            local nb = #get_airports()
+            local nb_pages = math.max(1, math.ceil(nb / 10))
+            data.ap_page = math.min(nb_pages, (data.ap_page or 1) + 1)
+            return true
+        end
         if fields.av_back then
-            if     data.av == "new_ap"   then data.av = "list";   data.ai = nil
-            elseif data.av == "rw_list"  then data.av = "list";   data.ai = nil
-            elseif data.av == "new_rw"   then data.av = "rw_list"
-            elseif data.av == "strips"   then data.av = "list"
+            if     data.av == "new_ap"    then data.av = "list";   data.ai = nil
+            elseif data.av == "rw_list"   then data.av = "list";   data.ai = nil
+            elseif data.av == "new_rw"    then data.av = "rw_list"
+            elseif data.av == "strips"    then data.av = "list"
             elseif data.av == "new_strip" then data.av = "strips"
+            elseif data.av == "pw_manage" then data.av = "list"
             else   data.av = "list" end
             return true
         end

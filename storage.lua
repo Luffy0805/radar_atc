@@ -109,3 +109,23 @@ function push_atc_log(airport_id, entry)
     while #log > (CFG.atc_log_max or 10) do table.remove(log) end
     ST:set_string("atclog_" .. airport_id, minetest.serialize(log))
 end
+
+-- =============================================================
+--  MOTS DE PASSE  (persistants, modifiables sans redémarrage)
+--  Stockés dans mod_storage, prioritaires sur config.lua
+-- =============================================================
+function get_passwords()
+    local r = ST:get_string("passwords_v1")
+    return (r ~= "" and minetest.deserialize(r)) or {}
+end
+
+function save_passwords(pw_table)
+    ST:set_string("passwords_v1", minetest.serialize(pw_table))
+end
+
+-- Appelé depuis init.lua au démarrage : charge les mdp persistés dans CFG
+function load_passwords_into_cfg()
+    local pw = get_passwords()
+    if pw.admin  and pw.admin  ~= "" then CFG.radar_password_admin  = pw.admin  end
+    if pw.remote and pw.remote ~= "" then CFG.radar_password_remote = pw.remote end
+end

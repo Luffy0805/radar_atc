@@ -77,8 +77,20 @@ minetest.register_chatcommand("atc", {
 
         -- /atc airport
         if args[1] and args[1]:lower() == "airport" then
-            local ap, d = nearest_ap(player:get_pos())
-            if ap then
+            local ppos = player:get_pos()
+            local ap, d = nearest_ap(ppos)
+            if ap and ap.pos then
+                -- Calcul direction cardinal
+                local dx = ap.pos.x - ppos.x
+                local dz = ap.pos.z - ppos.z
+                local angle = math.deg(math.atan2(dx, dz)) % 360
+                local dirs = {"N","NNE","NE","ENE","E","ESE","SE","SSE",
+                              "S","SSO","SO","OSO","O","ONO","NO","NNO"}
+                local dir = dirs[math.floor((angle + 11.25) / 22.5) % 16 + 1]
+                return true, clr("#88CCFF",
+                    string.format("[ATC] Plus proche : [%s] %s — %dm — %s",
+                        ap.id, ap.name, math.floor(d), dir))
+            elseif ap then
                 return true, clr("#88CCFF",
                     string.format("[ATC] Plus proche : [%s] %s — %dm", ap.id, ap.name, math.floor(d)))
             end
