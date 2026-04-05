@@ -222,9 +222,24 @@ Le privilège `atc` est destiné aux administrateurs et contrôleurs en chef.
 
 ---
 
-## Configuration (`config.lua`)
+## ⚠️ Sécurité — Mots de passe par défaut
 
-Tous les paramètres utilisent le préfixe `radar_atc.` :
+Les mots de passe par défaut sont volontairement simples pour faciliter la prise en main. **Sur un serveur public ou multi-joueurs, ils doivent être changés immédiatement.**
+
+| Rôle | Défaut | Changer via |
+|------|--------|-------------|
+| Accès onglet Admin | `admin` | Priv `atc` → bouton 🔑 dans Admin |
+| Contrôle aéroport distant | `airport` | Priv `atc` → bouton 🔑 dans Admin |
+
+Les nouveaux mots de passe sont **persistants** — ils survivent aux redémarrages du serveur et ne sont jamais écrits en dur dans le code.
+
+Il est également possible de désactiver entièrement le besoin de mot de passe distant en déployant une **Antenne de liaison ATC** à proximité de chaque poste de contrôle autorisé.
+
+---
+
+## Configuration (`minetest.conf`)
+
+Tous les paramètres peuvent être définis dans `minetest.conf` avec le préfixe `radar_atc.` :
 
 ```ini
 # Intervalle de rafraîchissement du radar (secondes, défaut : 3)
@@ -325,7 +340,9 @@ radar_atc/
 
 ## Licence
 
-Code source : **MIT**
-Modèles 3D et textures : **CC BY-SA 4.0**
+| Contenu | Licence |
+|---------|----------|
+| Code source (`.lua`) | [MIT](https://opensource.org/licenses/MIT) |
+| Modèles 3D et textures | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
 
-*Auteur : [Luffy0805]*
+Auteur : **Luffy0805**

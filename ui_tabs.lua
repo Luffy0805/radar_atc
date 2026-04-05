@@ -989,6 +989,11 @@ function tab_admin(data, mtos)
             table.insert(fs, string.format("label[0.30,%.2f;%s]", py + 2.60,
                 clr("#FF4444", data.admin_err)))
         end
+        -- Rappel sécurité si mots de passe par défaut
+        if CFG.radar_password_admin == "admin" then
+            table.insert(fs, string.format("label[0.30,%.2f;%s]", py + 2.65,
+                clr("#FF8800", "⚠ Mot de passe par défaut — pensez à le changer (priv atc)")))
+        end
         return table.concat(fs)
     end
 

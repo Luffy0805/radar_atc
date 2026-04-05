@@ -293,7 +293,7 @@ local function register_craft_item(name, desc, texture)
     minetest.register_craftitem("radar_atc:" .. name, {
         description = desc,
         inventory_image = texture,
-        groups = {not_in_creative_inventory=0},
+        groups = {not_in_creative_inventory=1},
     })
 end
 
