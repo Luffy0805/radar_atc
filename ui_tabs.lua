@@ -283,18 +283,31 @@ function tab_radar(data, mtos)
         py = py + 0.32
 
         local item_h = 0.44
-        local avail = CFG.Y_MAX - py
-        local visible = math.floor(avail / item_h)
-        local need_scroll = (n > visible)
-        local list_h = math.min(n, visible) * item_h
+        local avail   = CFG.Y_MAX - py
+        local PER_PL  = math.max(1, math.floor(avail / item_h))
+        local nb_pgs  = math.max(1, math.ceil(n / PER_PL))
+        local pl_page = math.max(1, math.min(nb_pgs, data.pl_page or 1))
+        data.pl_page  = pl_page
+        local pl_s = (pl_page - 1) * PER_PL + 1
+        local pl_e = math.min(pl_page * PER_PL, n)
 
-        if need_scroll then
-            table.insert(fs, scroll_box(PX, py, PW - 0.28, list_h, "sc_planes"))
+        if nb_pgs > 1 then
+            table.insert(fs, string.format("box[%.2f,%.2f;%.2f,0.38;#001a00]", PX, py, PW))
+            if pl_page > 1 then
+                table.insert(fs, string.format("button[%.2f,%.2f;2.0,0.38;pl_prev;%s]",
+                    PX, py, fe(clr("#88FF88", "◀"))))
+            end
+            table.insert(fs, string.format("label[%.2f,%.2f;%s]",
+                PX+2.2, py+0.01, clr("#AAFFAA", pl_page.."/"..nb_pgs)))
+            if pl_page < nb_pgs then
+                table.insert(fs, string.format("button[%.2f,%.2f;2.0,0.38;pl_next;%s]",
+                    PX+PW-2.0, py, fe(clr("#88FF88", "▶"))))
+            end
+            py = py + 0.42
         end
-        local lpy = need_scroll and 0 or py
-        local lpx = need_scroll and 0 or PX
 
-        for i, p in ipairs(planes) do
+        for i = pl_s, pl_e do
+            local p = planes[i]
             local fg = (i == sel) and "#FFAA00" or
                        (p.has_req and "#FF6666" or
                        (p.pilot and "#AAFFAA" or "#FFFFFF"))
@@ -304,13 +317,8 @@ function tab_radar(data, mtos)
                 p.pilot and " [" .. p.pilot .. "]" or "")
             table.insert(fs, string.format("style[btn_sel_%d;bgcolor=%s]", i, bg))
             table.insert(fs, string.format("button[%.2f,%.2f;%.2f,%.2f;btn_sel_%d;%s]",
-                lpx, lpy, need_scroll and (PW - 0.28) or PW, item_h, i, fe(clr(fg, line))))
-            lpy = lpy + item_h
-        end
-
-        if need_scroll then
-            table.insert(fs, "scroll_container_end[]")
-            table.insert(fs, scroll_bar(PX + PW - 0.26, py, list_h, "sc_planes"))
+                PX, py, PW, item_h, i, fe(clr(fg, line))))
+            py = py + item_h
         end
     end
 
@@ -439,13 +447,30 @@ function tab_myairport(data, mtos)
         table.insert(fs, string.format("label[10.2,%.2f;%s]", py + 0.02, clr("#FFAA44", "P2 (X,Y,Z)")))
         py = py + 0.44
         local item_h = 0.50
-        local avail2 = CFG.Y_MAX - py
-        local need_scroll2 = (#sorted_strips * item_h > avail2)
-        local list_h2 = math.min(#sorted_strips * item_h, avail2)
-        if need_scroll2 then table.insert(fs, scroll_box(0, py, CFG.X_MAX - 0.28, list_h2, "sc_st2")) end
-        for si, entry in ipairs(sorted_strips) do
+        local avail2  = CFG.Y_MAX - py
+        local PER_ST2 = math.max(1, math.floor(avail2 / item_h))
+        local nb_st2  = math.max(1, math.ceil(#sorted_strips / PER_ST2))
+        local st2_pg  = math.max(1, math.min(nb_st2, data.st2_page or 1))
+        data.st2_page = st2_pg
+        if nb_st2 > 1 then
+            table.insert(fs, string.format("box[0,%.2f;%.2f,0.38;#0d0d00]", py, CFG.X_MAX))
+            if st2_pg > 1 then
+                table.insert(fs, string.format("button[0,%.2f;2.5,0.38;st2_prev;%s]", py, fe(clr("#FFCC44","◀ Préc."))))
+            end
+            table.insert(fs, string.format("label[3,%.2f;%s]", py+0.01,
+                clr("#FFCC44", st2_pg.."/"..nb_st2)))
+            if st2_pg < nb_st2 then
+                table.insert(fs, string.format("button[%.2f,%.2f;2.5,0.38;st2_next;%s]",
+                    CFG.X_MAX-2.5, py, fe(clr("#FFCC44","Suiv. ▶"))))
+            end
+            py = py + 0.42
+        end
+        local st2_s = (st2_pg-1)*PER_ST2+1
+        local st2_e = math.min(st2_pg*PER_ST2, #sorted_strips)
+        for si = st2_s, st2_e do
+            local entry = sorted_strips[si]
             local st = entry.st
-            local bpy2 = need_scroll2 and (si - 1) * item_h or py
+            local bpy2 = py
             local len = (st.p1 and st.p2) and math.floor(math.sqrt(
                 (st.p2.x-st.p1.x)^2+(st.p2.y-st.p1.y)^2+(st.p2.z-st.p1.z)^2)+0.5) or 0
             local p1s = st.p1 and string.format("%.0f,%.0f,%.0f", st.p1.x, st.p1.y, st.p1.z) or "?"
@@ -456,12 +481,9 @@ function tab_myairport(data, mtos)
             table.insert(fs, string.format("label[4.8,%.2f;%dm]",  bpy2+0.06, st.width or 30))
             table.insert(fs, string.format("label[6.4,%.2f;%s]",   bpy2+0.06, clr("#AAAACC", p1s)))
             table.insert(fs, string.format("label[10.2,%.2f;%s]",  bpy2+0.06, clr("#AAAACC", p2s)))
-            if not need_scroll2 then py = py + item_h end
+            py = py + item_h
         end
-        if need_scroll2 then
-            table.insert(fs, "scroll_container_end[]")
-            table.insert(fs, scroll_bar(CFG.X_MAX - 0.26, py, list_h2, "sc_st2"))
-        end
+
         return table.concat(fs)
     end
 
@@ -508,8 +530,7 @@ function tab_myairport(data, mtos)
             table.insert(fs, string.format("box[0.20,%.2f;%.2f,1.80;#001a00]", py, CFG.X_MAX - 0.40))
             table.insert(fs, string.format("label[0.50,%.2f;%s]", py + 0.06,
                 clr("#88CCFF", "📡 Antenne de liaison  ") ..
-                clr("#FFFF44", "[" .. viewing .. "]") ..
-                "  " .. clr("#AACCFF", fe(ap_name_link))))
+                minetest.colorize("#88CCFF", fe("[" .. viewing .. "] " .. ap_name_link))))
             table.insert(fs, string.format("label[0.50,%.2f;%s]", py + 0.56,
                 clr("#00FF88", "Connexion sans mot de passe autorisée.")))
             table.insert(fs, string.format("button[0.50,%.2f;4.5,0.54;ctrl_confirm;%s]",
@@ -521,11 +542,9 @@ function tab_myairport(data, mtos)
             -- Pas d'antenne : demande le mot de passe
             table.insert(fs, string.format("box[0.20,%.2f;9.0,2.70;#110022]", py))
             local ap_pw     = find_ap(viewing)
-            local ap_pw_nom = ap_pw and fe(ap_pw.name) or viewing
             table.insert(fs, string.format("label[0.50,%.2f;%s]", py + 0.02,
                 clr("#CC88FF", "Mot de passe requis — ") ..
-                clr("#FFFF44", "[" .. viewing .. "]") ..
-                "  " .. clr("#AAAACC", ap_pw_nom) .. ":"))
+                minetest.colorize("#FFFF44", fe("[" .. viewing .. "]")) .. ":"))
             table.insert(fs, string.format("pwdfield[0.65,%.2f;5.5,0.80;ctrl_pw;Mot de passe]", py + 1.10))
             table.insert(fs, string.format("button[5.85,%.2f;2.7,0.62;ctrl_confirm;Confirmer]", py + 0.86))
             table.insert(fs, string.format("button[0.40,%.2f;2.5,0.50;ctrl_cancel;Annuler]", py + 1.85))
@@ -558,41 +577,45 @@ function tab_myairport(data, mtos)
     py = py + 0.46
 
     local item_h = 0.46
-    local avail = CFG.Y_MAX - py
-    local need_scroll = (#ap.runways * item_h > avail)
-    local list_h = math.min(#ap.runways * item_h, avail)
-
-    if need_scroll then
-        table.insert(fs, scroll_box(0, py, CFG.X_MAX - 0.28, list_h, "sc_rw"))
+    local avail   = CFG.Y_MAX - py
+    local PER_RW  = math.max(1, math.floor(avail / item_h))
+    local nb_rw   = math.max(1, math.ceil(#ap.runways / PER_RW))
+    local rw_pg   = math.max(1, math.min(nb_rw, data.rw_page or 1))
+    data.rw_page  = rw_pg
+    if nb_rw > 1 then
+        table.insert(fs, string.format("box[0,%.2f;%.2f,0.38;#001a33]", py, CFG.X_MAX))
+        if rw_pg > 1 then
+            table.insert(fs, string.format("button[0,%.2f;2.5,0.38;rw_prev;%s]", py, fe(clr("#88CCFF","◀ Préc."))))
+        end
+        table.insert(fs, string.format("label[3,%.2f;%s]", py+0.01,
+            clr("#88CCFF", rw_pg.."/"..nb_rw)))
+        if rw_pg < nb_rw then
+            table.insert(fs, string.format("button[%.2f,%.2f;2.5,0.38;rw_next;%s]",
+                CFG.X_MAX-2.5, py, fe(clr("#88CCFF","Suiv. ▶"))))
+        end
+        py = py + 0.42
     end
-
-    for _, rw in ipairs(ap.runways) do
+    local rw_s = (rw_pg-1)*PER_RW+1
+    local rw_e = math.min(rw_pg*PER_RW, #ap.runways)
+    for ri = rw_s, rw_e do
+        local rw = ap.runways[ri]
         local len = rw_len(rw)
         local p1s = rw.p1 and string.format("%.0f,%.0f,%.0f", rw.p1.x, rw.p1.y, rw.p1.z) or "?"
         local p2s = rw.p2 and string.format("%.0f,%.0f,%.0f", rw.p2.x, rw.p2.y, rw.p2.z) or "?"
         local app_str = "—"
         if rw.approaches then
             local parts = {}
-            for rn, coords in pairs(rw.approaches) do
-                table.insert(parts, rn .. ":" .. coords)
-            end
+            for rn, coords in pairs(rw.approaches) do table.insert(parts, rn..":"..coords) end
             if #parts > 0 then app_str = table.concat(parts, "  ") end
         end
-        local base_y = need_scroll and 0 or py
-        table.insert(fs, string.format("box[0,%.2f;%.2f,%.2f;#001122]",
-            base_y, CFG.X_MAX, item_h))
-        table.insert(fs, string.format("label[0.20,%.2f;%s]",  base_y + 0.03, clr("#FFFFFF", rw.name or "?")))
-        table.insert(fs, string.format("label[2.20,%.2f;%s]",  base_y + 0.03, len .. "m"))
-        table.insert(fs, string.format("label[4.00,%.2f;%s]",  base_y + 0.03, (rw.width or 30) .. "m"))
-        table.insert(fs, string.format("label[5.60,%.2f;%s]",  base_y + 0.03, clr("#AAAACC", app_str:sub(1, 28))))
-        table.insert(fs, string.format("label[12.00,%.2f;%s]", base_y + 0.03,
-            clr("#555577", p1s:sub(1, 12) .. "|" .. p2s:sub(1, 12))))
-        if need_scroll then base_y = base_y + item_h end
+        table.insert(fs, string.format("box[0,%.2f;%.2f,%.2f;#001122]", py, CFG.X_MAX, item_h))
+        table.insert(fs, string.format("label[0.20,%.2f;%s]",  py+0.03, clr("#FFFFFF", rw.name or "?")))
+        table.insert(fs, string.format("label[2.20,%.2f;%s]",  py+0.03, len.."m"))
+        table.insert(fs, string.format("label[4.00,%.2f;%s]",  py+0.03, (rw.width or 30).."m"))
+        table.insert(fs, string.format("label[5.60,%.2f;%s]",  py+0.03, clr("#AAAACC", app_str:sub(1,28))))
+        table.insert(fs, string.format("label[12.00,%.2f;%s]", py+0.03,
+            clr("#555577", p1s:sub(1,12).."|"..p2s:sub(1,12))))
         py = py + item_h
-    end
-    if need_scroll then
-        table.insert(fs, "scroll_container_end[]")
-        table.insert(fs, scroll_bar(CFG.X_MAX - 0.26, py - list_h - 0.46, list_h, "sc_rw"))
     end
 
     return table.concat(fs)
@@ -1019,15 +1042,17 @@ function tab_admin(data, mtos)
 
         -- Barre de titre
         table.insert(fs, string.format("box[0,%.2f;%.2f,0.46;#002244]", py, CFG.X_MAX))
-        table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.00,
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.03,
             clr("#88CCFF", "Aéroports enregistrés")))
         table.insert(fs, string.format("button[11.2,%.2f;3.4,0.38;new_ap;+ Nouvel aéroport]", py + 0.04))
         table.insert(fs, string.format("button[7.5,%.2f;3.5,0.38;goto_strips;Pistes independantes →]", py + 0.04))
+        py = py + 0.52
         if is_atc_ui then
-            table.insert(fs, string.format("button[0.20,%.2f;3.0,0.38;av_pw_manage;%s]",
-                py + 0.04, fe(clr("#CC88FF", "🔑 Mots de passe"))))
+            table.insert(fs, string.format("box[0,%.2f;%.2f,0.42;#1a0033]", py, CFG.X_MAX))
+            table.insert(fs, string.format("button[%.2f,%.2f;3.2,0.36;av_pw_manage;%s]",
+                CFG.X_MAX - 3.4, py + 0.03, fe(clr("#CC88FF", "🔑 Mots de passe"))))
+            py = py + 0.46
         end
-        py = py + 0.58
 
         -- Pagination (5 par page)
         local PER_PAGE = 10
@@ -1124,13 +1149,29 @@ function tab_admin(data, mtos)
         if #ap.runways == 0 then
             table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#888888", "Aucune piste.")))
         else
-            local item_h = 0.50
-            local avail  = CFG.Y_MAX - py
-            local need_scroll = (#ap.runways * item_h > avail)
-            local list_h = math.min(#ap.runways * item_h, avail)
-            if need_scroll then table.insert(fs, scroll_box(0, py, CFG.X_MAX - 0.28, list_h, "sc_rw2")) end
-            for ri, rw in ipairs(ap.runways) do
-                local bpy = need_scroll and (ri - 1) * item_h or py
+            local item_h  = 0.50
+            local avail   = CFG.Y_MAX - py
+            local PER_RW2 = math.max(1, math.floor(avail / item_h))
+            local nb_rw2  = math.max(1, math.ceil(#ap.runways / PER_RW2))
+            local rw2_pg  = math.max(1, math.min(nb_rw2, data.rw2_page or 1))
+            data.rw2_page = rw2_pg
+            if nb_rw2 > 1 then
+                table.insert(fs, string.format("box[0,%.2f;%.2f,0.38;#001a33]", py, CFG.X_MAX))
+                if rw2_pg > 1 then
+                    table.insert(fs, string.format("button[0,%.2f;2.5,0.38;rw2_prev;%s]", py, fe(clr("#88CCFF","◀ Préc."))))
+                end
+                table.insert(fs, string.format("label[3,%.2f;%s]", py+0.01, clr("#88CCFF", rw2_pg.."/"..nb_rw2)))
+                if rw2_pg < nb_rw2 then
+                    table.insert(fs, string.format("button[%.2f,%.2f;2.5,0.38;rw2_next;%s]",
+                        CFG.X_MAX-2.5, py, fe(clr("#88CCFF","Suiv. ▶"))))
+                end
+                py = py + 0.42
+            end
+            local rw2_s = (rw2_pg-1)*PER_RW2+1
+            local rw2_e = math.min(rw2_pg*PER_RW2, #ap.runways)
+            for ri = rw2_s, rw2_e do
+                local rw = ap.runways[ri]
+                local bpy = py
                 local app_info = ""
                 if rw.approaches then
                     local p2 = {}
@@ -1142,12 +1183,9 @@ function tab_admin(data, mtos)
                     bpy + 0.00, rw.name or ("R" .. ri), rw_len(rw), rw.width or 30, app_info))
                 table.insert(fs, string.format("button[12.50,%.2f;2.1,0.38;rw_del_%d;%s]",
                     bpy + 0.06, ri, fe(clr("#FF6666", "✕ Suppr."))))
-                if not need_scroll then py = py + item_h end
+                py = py + item_h
             end
-            if need_scroll then
-                table.insert(fs, "scroll_container_end[]")
-                table.insert(fs, scroll_bar(CFG.X_MAX - 0.26, py, list_h, "sc_rw2"))
-            end
+
         end
         return table.concat(fs)
     end
@@ -1229,12 +1267,28 @@ function tab_admin(data, mtos)
             table.insert(fs, string.format("label[7.0,%.2f;%s]",  py + 0.02, clr("#FFAA44", "P1 (X,Y,Z)")))
             table.insert(fs, string.format("label[10.5,%.2f;%s]", py + 0.02, clr("#FFAA44", "P2 (X,Y,Z)")))
             py = py + 0.44
-            local avail = CFG.Y_MAX - py
-            local need_scroll = (#strips * item_h > avail)
-            local list_h = math.min(#strips * item_h, avail)
-            if need_scroll then table.insert(fs, scroll_box(0, py, CFG.X_MAX - 0.28, list_h, "sc_st")) end
-            for si, st in ipairs(strips) do
-                local bpy = need_scroll and (si - 1) * item_h or py
+            local avail  = CFG.Y_MAX - py
+            local PER_ST = math.max(1, math.floor(avail / item_h))
+            local nb_st  = math.max(1, math.ceil(#strips / PER_ST))
+            local st_pg  = math.max(1, math.min(nb_st, data.st_page or 1))
+            data.st_page = st_pg
+            if nb_st > 1 then
+                table.insert(fs, string.format("box[0,%.2f;%.2f,0.38;#221100]", py, CFG.X_MAX))
+                if st_pg > 1 then
+                    table.insert(fs, string.format("button[0,%.2f;2.5,0.38;st_prev;%s]", py, fe(clr("#FFAA44","◀ Préc."))))
+                end
+                table.insert(fs, string.format("label[3,%.2f;%s]", py+0.01, clr("#FFAA44", st_pg.."/"..nb_st)))
+                if st_pg < nb_st then
+                    table.insert(fs, string.format("button[%.2f,%.2f;2.5,0.38;st_next;%s]",
+                        CFG.X_MAX-2.5, py, fe(clr("#FFAA44","Suiv. ▶"))))
+                end
+                py = py + 0.42
+            end
+            local st_s = (st_pg-1)*PER_ST+1
+            local st_e = math.min(st_pg*PER_ST, #strips)
+            for si = st_s, st_e do
+                local st = strips[si]
+                local bpy = py
                 local len = (st.p1 and st.p2) and math.floor(math.sqrt(
                     (st.p2.x-st.p1.x)^2+(st.p2.y-st.p1.y)^2+(st.p2.z-st.p1.z)^2)+0.5) or 0
                 local p1s = st.p1 and string.format("%.0f,%.0f,%.0f", st.p1.x, st.p1.y, st.p1.z) or "?"
@@ -1247,12 +1301,9 @@ function tab_admin(data, mtos)
                 table.insert(fs, string.format("label[10.5,%.2f;%s]",  bpy+0.06, clr("#AAAACC", p2s)))
                 table.insert(fs, string.format("button[12.5,%.2f;2.1,0.38;strip_del_%d;%s]",
                     bpy+0.06, si, fe(clr("#FF6666", "✕ Suppr."))))
-                if not need_scroll then py = py + item_h end
+                py = py + item_h
             end
-            if need_scroll then
-                table.insert(fs, "scroll_container_end[]")
-                table.insert(fs, scroll_bar(CFG.X_MAX - 0.26, py, list_h, "sc_st"))
-            end
+
         end
         return table.concat(fs)
     end

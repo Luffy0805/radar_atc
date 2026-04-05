@@ -243,7 +243,7 @@ minetest.register_node("radar_atc:transponder", {
     sounds              = minetest.get_modpath("default")
                           and default.node_sound_metal_defaults() or {},
     selection_box = {type="fixed", fixed={-0.5,-0.5,-0.5, 0.5,0.5,0.5}},
-    collision_box = {type="fixed", fixed={-0.5,-0.5,-0.5, 0.5,0.5,0.5}},
+    collision_box = {type="fixed", fixed={-0.5,-0.5,-0.5, 0.5,0.5, 0.5}},
     node_box = {
         type="fixed",
         fixed={
@@ -386,22 +386,69 @@ end
 --  L'opérateur configure l'ID de l'aéroport cible dans les
 --  métadonnées du nœud via l'interface de droite-clic.
 -- =============================================================
+
+-- =============================================================
+--  ENTITE ANTENNE DE LIAISON (mesh fixe, pas de rotation)
+-- =============================================================
+minetest.register_entity("radar_atc:link_antenna_entity", {
+    initial_properties = {
+        physical=false, collide_with_objects=false, pointable=false,
+        static_save=false, visual="mesh", mesh="link_antenna.obj",
+        textures={"link_antenna_tex.png"}, visual_size={x=15,y=15,z=15}, glow=0,
+    },
+    _node_pos = nil,
+    on_activate = function(self) self.object:set_armor_groups({immortal=1}) end,
+    on_step = function(self)
+        if self._node_pos then
+            if minetest.get_node(self._node_pos).name ~= "radar_atc:link_antenna" then
+                self.object:remove()
+            end
+        end
+    end,
+    on_deactivate = function(self) end,
+})
+
+local LINK_PIVOT_Y = - 0.5    -- pivot bas du mesh = niveau du nœud ancre
+
+local function spawn_link(pos)
+    local ep = {x=pos.x, y=pos.y + LINK_PIVOT_Y, z=pos.z}
+    local obj = minetest.add_entity(ep, "radar_atc:link_antenna_entity")
+    if obj then
+        local ent = obj:get_luaentity()
+        if ent then ent._node_pos = {x=pos.x,y=pos.y,z=pos.z} end
+    end
+end
+
+local function remove_link(pos)
+    local cp = {x=pos.x, y=pos.y+LINK_PIVOT_Y, z=pos.z}
+    for _, obj in ipairs(minetest.get_objects_inside_radius(cp, 3.0)) do
+        local ent = obj:get_luaentity()
+        if ent and ent.name=="radar_atc:link_antenna_entity" then obj:remove() end
+    end
+end
+
+local function check_link(pos)
+    local cp = {x=pos.x, y=pos.y+LINK_PIVOT_Y, z=pos.z}
+    for _, obj in ipairs(minetest.get_objects_inside_radius(cp, 3.0)) do
+        local ent = obj:get_luaentity()
+        if ent and ent.name=="radar_atc:link_antenna_entity" then return end
+    end
+    spawn_link(pos)
+end
+
 minetest.register_node("radar_atc:link_antenna", {
     description         = "Antenne de liaison ATC",
-    drawtype            = "mesh",
-    mesh                = "link_antenna.obj",
-    tiles               = {"link_antenna_tex.png"},
+    drawtype            = "nodebox",
+    tiles               = {"radar_atc_radar_base.png"},
     inventory_image     = "radar_atc_link_antenna.png",
-    wield_image         = "radar_atc_link_antenna.png",
-    visual_size         = {x=3, y=3, z=3},
     paramtype           = "light",
-    paramtype2          = "facedir",
     sunlight_propagates = true,
     groups              = {cracky=2},
     sounds              = minetest.get_modpath("default")
                           and default.node_sound_metal_defaults() or {},
-    selection_box = {type="fixed", fixed={-1.5,-0.5,-1.5, 1.5, 2.5, 1.5}},
-    collision_box = {type="fixed", fixed={-0.5, -0.5,-0.5,  0.5,  0.5,  0.5}},
+    selection_box = {type="fixed", fixed={-0.5,-0.5,-0.5, 0.5,0.2,0.5}},
+    collision_box = {type="fixed", fixed={-0.5,-0.5,-0.5, 0.5,0.5, 0.5}},
+    node_box      = {type="fixed", fixed={{-0.45,-0.5,-0.45, 0.45, 0.0,0.45}}},
 
     on_construct = function(pos)
         minetest.get_meta(pos):set_string("infotext",
@@ -409,17 +456,35 @@ minetest.register_node("radar_atc:link_antenna", {
             "Autorise la connexion à tout aéroport sans mot de passe\n" ..
             "depuis un radar situé à moins de " ..
             tostring(CFG.transponder_link_r or 75) .. " blocs.")
+        minetest.after(0.5, spawn_link, pos)
+        minetest.get_node_timer(pos):start(12)
+    end,
+    on_destruct = function(pos) remove_link(pos) end,
+    on_timer    = function(pos) check_link(pos); return true end,
+})
+
+minetest.register_lbm({
+    name              = "radar_atc:respawn_link",
+    nodenames         = {"radar_atc:link_antenna"},
+    run_at_every_load = true,
+    action = function(pos)
+        minetest.get_node_timer(pos):start(12)
+        minetest.after(1.0 + math.random() * 1.5, function()
+            if minetest.get_node(pos).name == "radar_atc:link_antenna" then
+                check_link(pos)
+            end
+        end)
     end,
 })
 
 if minetest.get_modpath("default") then
-    -- Antenne de liaison : parabole + module com + guide d'onde + acier
+    -- Antenne de liaison : parabole + guide d'onde + module com (sans rotator)
     minetest.register_craft({
         output = "radar_atc:link_antenna",
         recipe = {
-            {"",                    "radar_atc:parabole",    ""},
-            {"radar_atc:waveguide", "radar_atc:module_com",  "radar_atc:waveguide"},
-            {"default:steelblock",  "radar_atc:rotator",     "default:steelblock"},
+            {"",                    "radar_atc:parabole",   ""},
+            {"radar_atc:waveguide", "radar_atc:module_com", "radar_atc:waveguide"},
+            {"default:steelblock",  "radar_atc:magnetron",  "default:steelblock"},
         },
     })
 end
