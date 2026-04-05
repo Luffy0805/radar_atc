@@ -44,6 +44,7 @@ Affiche une vue radar en temps réel centrée sur la position de l'ordinateur (o
 - Cercle radar avec anneaux de distance
 - Avions sous forme de blips avec traînée (historique de position)
 - Altitude en mètres et pieds au survol
+- Listes des appareils en vols, beaucoup d'informations disponibles : propriétaire, pilote, cap, vitesse, altitude, gaz, PV avion, carburant, autonomie
 - Indicateur d'aéroport lié et portée active
 
 **Portées disponibles :** 500 m, 750 m, 1 000 m, 1 500 m, 2 000 m, 3 000 m, 5 000 m
