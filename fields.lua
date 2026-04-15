@@ -1,6 +1,8 @@
 -- =============================================================
--- radar_atc/fields.lua  —  Gestion des événements formspec (receive_fields)
+-- radar_atc/fields.lua  —  Formspec event handling (receive_fields)
 -- =============================================================
+
+local S = minetest.get_translator("radar_atc")
 
 function do_fields(app, mtos, sender, fields)
     local data = mtos.bdev:get_app_storage('ram', 'radar')
@@ -15,11 +17,11 @@ function do_fields(app, mtos, sender, fields)
 
     local linked = data.active_airport or data.linked_airport
 
-    -- Onglets
+    -- Tabs
     for _, t in ipairs({"radar","myap","atc","admin"}) do
         if fields["tab_" .. t] then
             if data.tab == "admin" and t ~= "admin" then
-                -- reset déverrouillage pour ce joueur quand il quitte l'onglet admin
+                -- reset unlock for this player when leaving the admin tab
                 local pn = data._player_name or ""
                 data._admin_ok = data._admin_ok or {}
                 data._admin_ok[pn] = false
@@ -47,7 +49,7 @@ function do_fields(app, mtos, sender, fields)
         if fields.dd_radius then
             local v = tonumber(fields.dd_radius)
             if v then
-                -- Bloquer instantanément si pas de transpondeur et portée trop grande
+                -- Block immediately if no transponder and range too large
                 if CFG.transponder_enabled and v > CFG.transponder_free_radius then
                     if not transponder_ok(data.remote_center or data.center_pos or mtos.pos, v) then
                         v = CFG.transponder_free_radius
@@ -62,19 +64,19 @@ function do_fields(app, mtos, sender, fields)
         end
     end
 
-    -- ===== AÉROPORTS =====
+    -- ===== AIRPORTS =====
     if data.tab == "myap" then
-        -- Initialiser myap_view si absent
+        -- Initialize myap_view if absent
         if not data.myap_view then
             local airports = get_airports()
             data.myap_view = data.linked_airport or (airports[1] and airports[1].id)
         end
 
-        -- Traiter les actions de contrôle EN PREMIER (myap_sel fait return true)
+        -- Process control actions FIRST (myap_sel does return true)
         if fields.ctrl_request then
             if fields.myap_sel then
                 local raw = fields.myap_sel or ""
-                if raw:find("Pistes independantes", 1, true) then
+                if raw:find("Pistes independantes", 1, true) or raw:find("Independent runways", 1, true) then
                     data.myap_view = "goto_strips_view"
                     return true
                 end
@@ -124,7 +126,7 @@ function do_fields(app, mtos, sender, fields)
                 data.myap_ctrl_mode = nil; data.myap_ctrl_err = nil
                 data.tab = "radar"
             else
-                data.myap_ctrl_err = "Mot de passe incorrect."
+                data.myap_ctrl_err = S("Wrong password.")
             end
             return true
         end
@@ -139,10 +141,10 @@ function do_fields(app, mtos, sender, fields)
             return true
         end
 
-        -- Changement de dropdown (en dernier)
+        -- Dropdown change (last)
         if fields.myap_sel then
             local raw = fields.myap_sel or ""
-            if raw:find("Pistes independantes", 1, true) then
+            if raw:find("Pistes independantes", 1, true) or raw:find("Independent runways", 1, true) then
                 data.myap_view = "goto_strips_view"
                 return true
             end
@@ -176,16 +178,16 @@ function do_fields(app, mtos, sender, fields)
                 data._admin_ok[data._player_name or ""] = true
                 data.admin_err = nil; data.av = "list"
             else
-                data.admin_err = "Mot de passe incorrect."
+                data.admin_err = S("Wrong password.")
             end
             return true
         end
-        -- Vérifier que CE joueur précis a déverrouillé (pas un autre joueur du même laptop)
+        -- Check that THIS specific player has unlocked (not another player on the same laptop)
         local _cur_pname = data._player_name or ""
         data._admin_ok = data._admin_ok or {}
         if not data._admin_ok[_cur_pname] then return true end
 
-        -- Changement de mots de passe (réservé aux joueurs avec priv atc)
+        -- Password change (reserved for players with atc priv)
         local pname_admin = data._player_name or ""
         if minetest.check_player_privs(pname_admin, {atc=true}) then
             if fields.save_pw_admin and fields.new_pw_admin then
@@ -195,9 +197,9 @@ function do_fields(app, mtos, sender, fields)
                     local stored = get_passwords()
                     stored.admin = pw
                     save_passwords(stored)
-                    data.pw_saved_msg = "✔ Mot de passe admin mis à jour."
+                    data.pw_saved_msg = S("✔ Admin password updated.")
                 else
-                    data.pw_saved_msg = "✗ Mot de passe vide ignoré."
+                    data.pw_saved_msg = S("✗ Empty password ignored.")
                 end
                 return true
             end
@@ -208,20 +210,20 @@ function do_fields(app, mtos, sender, fields)
                     local stored = get_passwords()
                     stored.remote = pw
                     save_passwords(stored)
-                    data.pw_saved_msg = "✔ Mot de passe distant mis à jour."
+                    data.pw_saved_msg = S("✔ Remote password updated.")
                 else
-                    data.pw_saved_msg = "✗ Mot de passe vide ignoré."
+                    data.pw_saved_msg = S("✗ Empty password ignored.")
                 end
                 return true
             end
         end
 
-        -- Navigation vers gestion mots de passe
+        -- Navigate to password management
         if fields.av_pw_manage then
             data.av = "pw_manage"; data.pw_saved_msg = nil
             return true
         end
-        -- Pagination liste aéroports
+        -- Airport list pagination
         if fields.ap_prev then
             data.ap_page = math.max(1, (data.ap_page or 1) - 1)
             return true
@@ -260,9 +262,9 @@ function do_fields(app, mtos, sender, fields)
             data.n_ap_y    = fields.ap_py   or data.n_ap_y    or ""
             data.n_ap_z    = fields.ap_pz   or data.n_ap_z    or ""
             local id = (data.n_ap_id):upper():gsub("[^A-Z0-9]", ""):sub(1, 6)
-            if #id == 0 then data.n_ap_err = "Identifiant obligatoire."; return true end
-            if #(data.n_ap_name or "") == 0 then data.n_ap_err = "Nom obligatoire."; return true end
-            if find_ap(id) then data.n_ap_err = "ID '" .. id .. "' déjà utilisé."; return true end
+            if #id == 0 then data.n_ap_err = "Identifier required."; return true end
+            if #(data.n_ap_name or "") == 0 then data.n_ap_err = "Name required."; return true end
+            if find_ap(id) then data.n_ap_err = "ID '" .. id .. "' already used."; return true end
             local px = tonumber(data.n_ap_x); local pv = tonumber(data.n_ap_y); local pz = tonumber(data.n_ap_z)
             local pos = (px and pv and pz) and {x=px, y=pv, z=pz}
                        or {x=mtos.pos.x, y=mtos.pos.y, z=mtos.pos.z}
@@ -301,7 +303,7 @@ function do_fields(app, mtos, sender, fields)
             local p1x, p1y, p1z = rn("p1x"), rn("p1y"), rn("p1z")
             local p2x, p2y, p2z = rn("p2x"), rn("p2y"), rn("p2z")
             if not (p1x and p1y and p1z and p2x and p2y and p2z) then
-                data.n_rw_err = "Toutes les coordonnées sont requises."; return true
+                data.n_rw_err = S("All coordinates are required."); return true
             end
             local p1 = {x=p1x, y=p1y, z=p1z}; local p2 = {x=p2x, y=p2y, z=p2z}
             local suf  = (data.n_rw_suf or ""):upper():gsub("[^LRC]", ""):sub(1, 1)
@@ -339,7 +341,7 @@ function do_fields(app, mtos, sender, fields)
             end
         end
 
-        -- Pistes indépendantes
+        -- Independent runways
         if fields.new_strip then
             data.av = "new_strip"
             data.n_st_name = ""; data.n_st_wid = "30"; data.n_st_note = ""
@@ -355,13 +357,13 @@ function do_fields(app, mtos, sender, fields)
                 data["n_st_"..k] = fields["strip_"..k] or data["n_st_"..k] or ""
             end
             if (data.n_st_name or "") == "" then
-                data.n_st_err = "Nom obligatoire."; return true
+                data.n_st_err = "Name required."; return true
             end
             local function rn(k) return tonumber(data["n_st_"..k]) end
             local p1x,p1y,p1z = rn("p1x"),rn("p1y"),rn("p1z")
             local p2x,p2y,p2z = rn("p2x"),rn("p2y"),rn("p2z")
             if not (p1x and p1y and p1z and p2x and p2y and p2z) then
-                data.n_st_err = "Toutes les coordonnées sont requises."; return true
+                data.n_st_err = S("All coordinates are required."); return true
             end
             local strips = get_strips()
             table.insert(strips, {
@@ -430,10 +432,10 @@ function do_fields(app, mtos, sender, fields)
         local reqs  = state.requests or {}
         local convs = state.conversations or {}
 
-        -- Helper : préfixe ATC court pour les messages chat joueurs
+        -- Helper: short ATC prefix for player chat messages
         local atc_prefix = "[ATC " .. (linked or "?") .. "]"
 
-        -- Requêtes
+        -- Requests
         for ri = 1, #reqs do
             local req = reqs[ri]
             if not req then break end
@@ -445,7 +447,7 @@ function do_fields(app, mtos, sender, fields)
                 return true
             end
 
-            -- Auth piste individuelle
+            -- Individual runway authorization
             local rw_done = false
             for rwi = 1, 20 do
                 local ap = linked and find_ap(linked)
@@ -455,12 +457,12 @@ function do_fields(app, mtos, sender, fields)
                     for pn in (rw.name or ""):gmatch("[^/]+") do table.insert(parts, pn) end
                     for _, pn in ipairs(parts) do
                         if fields["atc_rw_" .. ri .. "_" .. rwi .. "_" .. pn] then
-                            local verb = req.req_type == "landing" and "Atterrissage" or "Décollage"
+                            local verb = req.req_type == "landing" and "Landing" or "Takeoff"
                             minetest.chat_send_player(req.player,
-                                clr("#00FF88", atc_prefix .. " " .. verb .. " autorisé — Piste " .. pn))
+                                clr("#00FF88", atc_prefix .. " " .. verb .. " authorized — Runway " .. pn))
                             push_atc_log(linked, {
                                 time=os.time(), player=req.player, model=req.model or "?",
-                                req_type=req.req_type, decision="autorisé", runway=pn
+                                req_type=req.req_type, decision="authorized", runway=pn
                             })
                             table.remove(reqs, ri)
                             state.requests = reqs
@@ -473,7 +475,7 @@ function do_fields(app, mtos, sender, fields)
             end
             if rw_done then return true end
 
-            -- Auth approche
+            -- Approach authorization
             for rwi = 1, 20 do
                 local ap = linked and find_ap(linked)
                 local rw = ap and ap.runways and ap.runways[rwi]
@@ -490,20 +492,20 @@ function do_fields(app, mtos, sender, fields)
                                 local dir = cap_to_dir(cap_deg)
                                 msg = string.format(
                                     "%s Approche piste %s : cap %s (%.0f°), coords approche %s. "..
-                                    "Contactez la tour à l'approche.",
+                                    "Contact tower on approach.",
                                     atc_prefix, pn, dir, cap_deg, coords)
                             else
                                 local pp = rw.p1 and
                                     string.format("%.0f,%.0f", rw.p1.x, rw.p1.z) or "?"
                                 msg = string.format(
-                                    "%s Approche piste %s : aucune approche programmée, "..
-                                    "référez-vous aux coords de la piste (%s).",
+                                    "%s Approach runway %s: no approach programmed, "..
+                                    "refer to runway coordinates (%s).",
                                     atc_prefix, pn, pp)
                             end
                             minetest.chat_send_player(req.player, clr("#44FFCC", msg))
                             push_atc_log(linked, {
                                 time=os.time(), player=req.player, model=req.model or "?",
-                                req_type="approach", decision="autorisé", runway=pn
+                                req_type="approach", decision="authorized", runway=pn
                             })
                             table.remove(reqs, ri)
                             state.requests = reqs
@@ -518,15 +520,15 @@ function do_fields(app, mtos, sender, fields)
                 if req.req_type == "flyover" then
                     local alt = req.alt or 500
                     minetest.chat_send_player(req.player,
-                        clr("#00FF88", atc_prefix .. " Survol autorisé à "
+                        clr("#00FF88", atc_prefix .. " Flyover authorized at "
                             .. alt .. "m / " .. to_ft(alt) .. "ft"))
                 else
                     minetest.chat_send_player(req.player,
-                        clr("#00FF88", atc_prefix .. " Autorisé(e)"))
+                        clr("#00FF88", atc_prefix .. " Authorized"))
                 end
                 push_atc_log(linked, {
                     time=os.time(), player=req.player, model=req.model or "?",
-                    req_type=req.req_type, decision="autorisé", runway=nil
+                    req_type=req.req_type, decision="authorized", runway=nil
                 })
                 table.remove(reqs, ri); state.requests = reqs
                 save_shared_atc(linked, state)
@@ -534,10 +536,10 @@ function do_fields(app, mtos, sender, fields)
             end
             if fields["atc_ref_" .. ri] then
                 minetest.chat_send_player(req.player,
-                    clr("#FF4444", atc_prefix .. " Refusé — Contactez la tour."))
+                    clr("#FF4444", atc_prefix .. " Refused — Contact tower."))
                 push_atc_log(linked, {
                     time=os.time(), player=req.player, model=req.model or "?",
-                    req_type=req.req_type, decision="refusé", runway=nil
+                    req_type=req.req_type, decision="refused", runway=nil
                 })
                 table.remove(reqs, ri); state.requests = reqs
                 save_shared_atc(linked, state)
@@ -547,7 +549,7 @@ function do_fields(app, mtos, sender, fields)
                 if req.status ~= "hold" then
                     req.status = "hold"
                     minetest.chat_send_player(req.player,
-                        clr("#FFAA00", atc_prefix .. " En attente — Maintenez votre position."))
+                        clr("#FFAA00", atc_prefix .. " On hold — Hold your position."))
                     save_shared_atc(linked, state)
                 end
                 return true
@@ -582,7 +584,7 @@ function do_fields(app, mtos, sender, fields)
                         table.insert(conv.messages, {from="atc", text=txt, time=os.time()})
                         minetest.chat_send_player(conv.pilot,
                             clr("#00FFFF", atc_prefix .. " " .. txt
-                                .. "  (Répondre: /atc " .. (linked or "?") .. " msg <texte>)"))
+                                .. "  (Répondre: /atc " .. (linked or "?") .. " msg <text>)"))
                         save_shared_atc(linked, state)
                         data.radio_draft = ""
                     end

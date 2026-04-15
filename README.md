@@ -1,200 +1,200 @@
 # Radar ATC
 
-**Mod Minetest** — Surveillance aérienne, contrôle du trafic aérien et gestion d'aéroports pour le mod [laptop](https://content.minetest.net/packages/mt-mods/laptop/).
+**Minetest Mod** — Air surveillance, air traffic control and airport management for the [laptop](https://content.minetest.net/packages/mt-mods/laptop/) mod.
 
 ---
 
-## Dépendances
+## Dependencies
 
-| Mod | Rôle |
+| Mod | Role |
 |-----|------|
-| `laptop` | Fournit l'interface d'application et l'ordinateur portable |
-| `airutils` | Fournit les avions détectables par le radar |
+| `laptop` | Provides the app interface and the laptop computer |
+| `airutils` | Provides aircraft detectable by the radar |
 
 ---
 
 ## Installation
 
-1. Placer le dossier `radar_atc/` dans `<minetest>/mods/`
-2. Activer le mod dans les paramètres de la partie
-3. Crafting de l'application depuis le laptop
+1. Place the `radar_atc/` folder in `<minetest>/mods/`
+2. Enable the mod in the game settings
+3. Craft the application from the laptop
 
 ---
 
-## Vue d'ensemble
+## Overview
 
-Radar ATC est une application qui s'exécute sur le **laptop** (`laptop` mod). Elle permet à un opérateur de :
+Radar ATC is an application that runs on the **laptop** (`laptop` mod). It allows an operator to:
 
-- **Surveiller le trafic aérien** en temps réel sur un radar
-- **Gérer des aéroports** (créer des aéropotrs, configurer les pistes, définir des coordonnées approches)
-- **Traiter les demandes ATC** des pilotes (atterrissage, décollage, survol, approche)
-- **Communiquer par radio** avec les pilotes
-- **Contrôler à distance** un autre aéroport via mot de passe ou antenne de liaison
-- **Publier des NOTAM** (avis aux pilotes) par aéroport
+- **Monitor air traffic** in real time on a radar display
+- **Manage airports** (create airports, configure runways, define approach coordinates)
+- **Process ATC requests** from pilots (landing, takeoff, flyover, approach)
+- **Communicate by radio** with pilots
+- **Remotely control** another airport via password or link antenna
+- **Publish NOTAMs** (notices to airmen) per airport
 
 ---
 
-## Onglets de l'application
+## Application Tabs
 
 ### 🟢 Radar
 
-Affiche une vue radar en temps réel centrée sur la position de l'ordinateur (ou sur l'aéroport contrôlé à distance).
+Displays a real-time radar view centered on the computer's position (or the remotely controlled airport).
 
-**Éléments affichés :**
-- Cercle radar avec anneaux de distance
-- Avions sous forme de blips avec traînée (historique de position)
-- Altitude en mètres et pieds au survol
-- Listes des appareils en vols, beaucoup d'informations disponibles : propriétaire, pilote, cap, vitesse, altitude, gaz, PV avion, carburant, autonomie
-- Indicateur d'aéroport lié et portée active
+**Displayed elements:**
+- Radar circle with distance rings
+- Aircraft as blips with trails (position history)
+- Altitude in meters and feet on hover
+- Aircraft list with detailed info: owner, pilot, heading, speed, altitude, throttle, HP, fuel, range
+- Linked airport indicator and active range
 
-**Portées disponibles :** 500 m, 750 m, 1 000 m, 1 500 m, 2 000 m, 3 000 m, 5 000 m
+**Available ranges:** 500 m, 750 m, 1,000 m, 1,500 m, 2,000 m, 3,000 m, 5,000 m
 
-> ⚠️ Les portées supérieures à **1 000 m** nécessitent un **Transpondeur ASR** placé à moins de 75 blocs de l'aéroport actif. Sans transpondeur, seules les portées ≤ 1 000 m sont disponibles dans le menu.
+> ⚠️ Ranges above **1,000 m** require an **ASR Transponder** placed within 75 blocks of the active airport. Without a transponder, only ranges ≤ 1,000 m are available in the menu.
 
 ---
 
-### ✈️ Aéroports
+### ✈️ Airports
 
-Liste tous les aéroports enregistrés et permet de **prendre le contrôle** d'un aéroport distant.
+Lists all registered airports and allows **taking control** of a remote airport.
 
-**Informations affichées par aéroport :**
-- Identifiant OACI, nom complet, position
-- Pistes : désignation, longueur, largeur, coordonnées d'approche
+**Information displayed per airport:**
+- ICAO identifier, full name, position
+- Runways: designation, length, width, approach coordinates per direction
 
-**Prise de contrôle d'un aéroport distant :**
+**Taking control of a remote airport:**
 
-Un ordinateur peut contrôler un aéroport autre que son aéroport lié. Deux méthodes :
-1. **Mot de passe distant** — saisir le mot de passe défini pour changer d'aéroport (pr défaut "airport")
-2. **Antenne de liaison** — si une `Antenne de liaison ATC` est présente à moins de 75 blocs de l'ordinateur, la connexion est autorisée sans mot de passe
+A computer can control an airport other than its linked airport. Two methods:
+1. **Remote password** — enter the defined password to switch airports (default: `"airport"`)
+2. **Link antenna** — if an `ATC Link Antenna` is present within 75 blocks of the computer, the connection is authorized without a password
 
-Une fois en contrôle distant, le radar se centre sur l'aéroport cible et le transpondeur recherché est celui de cet aéroport.
+Once in remote control, the radar centers on the target airport and the transponder searched is the one for that airport.
 
-**Pistes indépendantes :** liste des pistes sans aéroport ATC associé, visibles par tous les pilotes.
+**Independent runways:** list of runways without an associated ATC airport, visible to all pilots.
 
 ---
 
 ### 📡 ATC
 
-Interface de contrôle du trafic aérien pour l'aéroport actif.
+Air traffic control interface for the active airport.
 
-**Sous-onglet Demandes :**
-- Liste des demandes en attente des pilotes (atterrissage, décollage, survol, approche)
-- Chaque demande affiche : pilote, modèle d'avion, type, altitude (survol), heure
-- Actions : **Autoriser** (avec piste et instructions optionnelles), **En attente**, **Refuser**
-- Les demandes deviennent « anciennes » après 90 secondes (grisées) — le pilote peut en renvoyer une nouvelle
-- Pagination : 3 demandes par page
+**Requests sub-tab:**
+- List of pending pilot requests (landing, takeoff, flyover, approach)
+- Each request shows: pilot, aircraft model, type, altitude (flyover), timestamp
+- Actions: **Authorize** (with runway and optional instructions), **Hold**, **Refuse**
+- Requests become "stale" after 90 seconds (grayed out) — the pilot can send a new one
+- Pagination: 3 requests per page
 
-**Sous-onglet Radio :**
-- Messages radio libres envoyés par les pilotes via `/atc <ID> msg <texte>`
-- Conversations groupées par pilote
+**Radio sub-tab:**
+- Free radio messages sent by pilots via `/atc <ID> msg <text>`
+- Conversations grouped by pilot
 
-**Sous-onglet NOTAM :**
-- Avis aux pilotes publiés par l'opérateur ATC
-- Maximum 10 lignes par aéroport
-- Consultables par les pilotes via la commande `/notam ID`
+**NOTAM sub-tab:**
+- Notices to airmen published by the ATC operator
+- Maximum 10 lines per airport
+- Consultable by pilots via the `/notam ID` command
 
-**Sous-onglet Log :**
-- Historique des 10 dernières décisions ATC (autorisation/refus)
+**Log sub-tab:**
+- History of the last 10 ATC decisions (authorization/refusal)
 
 ---
 
 ### 🔒 Admin
 
-Accès protégé par mot de passe (par défaut : `admin`).
+Access protected by password (default: `admin`).
 
-**Gestion des aéroports :**
-- Créer un aéroport (identifiant OACI, nom, position)
-- Ajouter/supprimer des pistes (désignation automatique depuis les coordonnées, largeur, coordonnées d'approche par sens)
-- Supprimer un aéroport
-- Pagination : 10 aéroports par page
+**Airport management:**
+- Create an airport (ICAO identifier, name, position)
+- Add/remove runways (automatic designation from coordinates, width, approach coordinates per direction)
+- Delete an airport
+- Pagination: 10 airports per page
 
-**Gestion des mots de passe** *(priv `atc` requis)* :
-- Bouton `🔑 Mots de passe` visible uniquement aux joueurs ayant le privilège `atc`
-- Affiche les mots de passe courants en clair (admin et distant)
-- Permet de les modifier — les nouveaux mots de passe sont **persistants** (survivent aux redémarrages), et ne seront pas affichés en dur dans le code ! 
-
----
-
-## Nœuds
-
-### Transpondeur ASR (`radar_atc:transponder`)
-
-Tour radar rotative réaliste (mesh 3D) qui étend la portée du radar au-delà de 1 000 m.
-
-- Doit être placé à **moins de 75 blocs** de l'aéroport qu'il dessert (dans le rayon `airport_link_r`)
-- Sa présence est **mémorisée** dans les données de l'aéroport — il n'est pas nécessaire que le chunk soit chargé pour que le radar reconnaisse son existence
-- L'antenne tourne automatiquement quand un joueur est à moins de 48 blocs (veille sinon)
-
-**Craft :**
-
-```
-[ Parabole  ]  [ Magnétron ]  [ Parabole  ]
-[ Guide d'onde ]  [ Moteur  ]  [ Guide d'onde ]
-[ Bloc acier ]  [ Module com ]  [ Bloc acier ]
-```
+**Password management** *(requires `atc` privilege)*:
+- `🔑 Passwords` button visible only to players with the `atc` privilege
+- Displays current passwords in plain text (admin and remote)
+- Allows changing them — new passwords are **persistent** (survive restarts) and are never stored in plain text in the code!
 
 ---
 
-### Antenne de liaison ATC (`radar_atc:link_antenna`)
+## Nodes
 
-Tour de télécommunication (~6 blocs de haut) qui permet à un ordinateur radar de prendre le contrôle de **n'importe quel aéroport sans mot de passe**.
+### ASR Radar Antenna (`radar_atc:transponder`)
 
-- Doit être placée à **moins de 75 blocs** de l'ordinateur radar
-- Aucune configuration nécessaire — la simple présence suffit
-- Peut être orientée selon la direction de pose (`facedir`)
+Realistic rotating radar tower (3D mesh) that extends radar range beyond 1,000 m.
 
-**Craft :**
+- Must be placed within **75 blocks** of the airport it serves (within `airport_link_r` radius)
+- Its presence is **stored** in the airport's data — the chunk does not need to be loaded for the radar to recognize its existence
+- The antenna rotates automatically when a player is within 48 blocks (standby otherwise)
+
+**Craft:**
 
 ```
-[    vide    ]  [ Parabole  ]  [    vide    ]
-[ Guide d'onde ]  [ Module com ]  [ Guide d'onde ]
-[ Bloc acier ]  [ Magnétron ]  [ Bloc acier ]
+[ Dish      ]  [ Magnetron ]  [ Dish      ]
+[ Waveguide ]  [ Rotator   ]  [ Waveguide ]
+[ Steel Blk ]  [ Com Mod.  ]  [ Steel Blk ]
 ```
 
 ---
 
-### Composants de craft (non posables)
+### ATC Link Antenna (`radar_atc:link_antenna`)
+
+Telecommunications tower (~6 blocks tall) that allows a radar computer to take control of **any airport without a password**.
+
+- Must be placed within **75 blocks** of the radar computer
+- No configuration required — its mere presence is sufficient
+- Can be oriented according to the placement direction (`facedir`)
+
+**Craft:**
+
+```
+[    empty   ]  [ Dish      ]  [    empty   ]
+[ Waveguide  ]  [ Com Mod.  ]  [ Waveguide  ]
+[ Steel Blk  ]  [ Magnetron ]  [ Steel Blk  ]
+```
+
+---
+
+### Craft Components (non-placeable)
 
 | Item | Craft | Usage |
 |------|-------|-------|
-| **Module de communication** | 2× or + 2× mese + 2× cuivre + acier | Transpondeur + Antenne |
-| **Parabole** | 4× acier + diamant | Transpondeur + Antenne |
-| **Guide d'onde** ×2 | 4× cuivre + 2× or | Transpondeur + Antenne |
-| **Magnétron** | 4× obsidienne + 2× acier + mese (bloc) | Transpondeur + Antenne |
-| **Moteur de rotation** | 4× acier + 4× cuivre + mese | Transpondeur uniquement |
+| **Communication Module** | 2× gold + 2× mese + 2× copper + steel | Transponder + Antenna |
+| **Reception Dish** | 4× steel + diamond | Transponder + Antenna |
+| **Microwave Waveguide** ×2 | 4× copper + 2× gold | Transponder + Antenna |
+| **Radar Magnetron** | 4× obsidian + 2× steel + mese (block) | Transponder + Antenna |
+| **Azimuth Rotator Motor** | 4× steel + 4× copper + mese | Transponder only |
 
 ---
 
-## Commandes chat
+## Chat Commands
 
 ### `/atc <ID|airport> <action> [param]`
 
-Communication pilot → tour de contrôle. **Nécessite d'être à bord d'un avion** (sauf `airport`).
+Pilot → control tower communication. **Requires being on board an aircraft** (except `airport`).
 
-| Sous-commande | Description |
-|---------------|-------------|
-| `airport` | Affiche l'aéroport le plus proche avec distance et orientation (N, NNE, NE…) |
-| `<ID> landing` | Demande d'autorisation d'atterrissage |
-| `<ID> takeoff` | Demande d'autorisation de décollage |
-| `<ID> flyover <alt_m>` | Demande de survol à l'altitude indiquée (en mètres) |
-| `<ID> approach` | Demande d'instructions d'approche |
-| `<ID> msg <texte>` | Message radio libre vers la tour |
+| Sub-command | Description |
+|-------------|-------------|
+| `airport` | Shows the nearest airport with distance and direction (N, NNE, NE…) |
+| `<ID> landing` | Requests landing clearance |
+| `<ID> takeoff` | Requests takeoff clearance |
+| `<ID> flyover <alt_m>` | Requests flyover at the given altitude (in meters) |
+| `<ID> approach` | Requests approach instructions |
+| `<ID> msg <text>` | Free radio message to the tower |
 
-**Anti-doublon :** un pilote ne peut pas renvoyer la même demande avant 15 secondes.
+**Anti-duplicate:** a pilot cannot resend the same request within 15 seconds.
 
-**Exemples :**
+**Examples:**
 ```
 /atc airport
 /atc LFPG landing
 /atc LFPG flyover 500
-/atc LFPG msg En courte finale piste 27
+/atc LFPG msg On short final runway 27
 ```
 
 ---
 
 ### `/notam <ID|nearest>`
 
-Consulte les avis aux pilotes d'un aéroport.
+Consults pilot notices for an airport.
 
 ```
 /notam LFPG
@@ -203,146 +203,146 @@ Consulte les avis aux pilotes d'un aéroport.
 
 ---
 
-## Privilège `atc`
+## `atc` Privilege
 
-Le privilège `atc` est destiné aux administrateurs et contrôleurs en chef.
+The `atc` privilege is intended for administrators and chief controllers.
 
-**Accès :**
+**Grant:**
 ```
-/grant <joueur> atc
+/grant <player> atc
 ```
 
-**Ce que ce privilège permet :**
-- Voir et modifier les mots de passe admin et distant depuis l'interface (bouton `🔑 Mots de passe` dans Admin)
-- Les modifications sont persistantes (stockées dans le mod storage)
+**What this privilege allows:**
+- View and modify admin and remote passwords from the interface (`🔑 Passwords` button in Admin)
+- Changes are persistent (stored in mod storage)
 
-**Ce que ce privilège ne permet PAS :**
-- Passer outre le mot de passe admin pour déverrouiller l'onglet Admin
-- Prendre le contrôle d'un aéroport sans mot de passe ou antenne
+**What this privilege does NOT allow:**
+- Bypassing the admin password to unlock the Admin tab
+- Taking control of an airport without a password or antenna
 
 ---
 
-## ⚠️ Sécurité — Mots de passe par défaut
+## ⚠️ Security — Default Passwords
 
-Les mots de passe par défaut sont volontairement simples pour faciliter la prise en main. **Sur un serveur public ou multi-joueurs, ils doivent être changés immédiatement.**
+Default passwords are intentionally simple for easy setup. **On a public or multi-player server, they must be changed immediately.**
 
-| Rôle | Défaut | Changer via |
-|------|--------|-------------|
-| Accès onglet Admin | `admin` | Priv `atc` → bouton 🔑 dans Admin |
-| Contrôle aéroport distant | `airport` | Priv `atc` → bouton 🔑 dans Admin |
+| Role | Default | Change via |
+|------|---------|------------|
+| Admin tab access | `admin` | `atc` priv → 🔑 button in Admin |
+| Remote airport control | `airport` | `atc` priv → 🔑 button in Admin |
 
-Les nouveaux mots de passe sont **persistants** — ils survivent aux redémarrages du serveur et ne sont jamais écrits en dur dans le code.
+New passwords are **persistent** — they survive server restarts and are never written in plain text in the code.
 
-Il est également possible de désactiver entièrement le besoin de mot de passe distant en déployant une **Antenne de liaison ATC** à proximité de chaque poste de contrôle autorisé.
+It is also possible to completely disable the remote password requirement by deploying an **ATC Link Antenna** near each authorized control station.
 
 ---
 
 ## Configuration (`minetest.conf`)
 
-Tous les paramètres peuvent être définis dans `minetest.conf` avec le préfixe `radar_atc.` :
+All parameters can be defined in `minetest.conf` with the prefix `radar_atc.`:
 
 ```ini
-# Intervalle de rafraîchissement du radar (secondes, défaut : 3)
+# Radar refresh interval (seconds, default: 3)
 radar_atc.timer_interval = 3
 
-# Portée radar par défaut au démarrage (mètres, défaut : 1000)
+# Default radar range at startup (meters, default: 1000)
 radar_atc.default_radius = 1000
 
-# Longueur des traînées radar (positions mémorisées, défaut : 5)
+# Radar trail length (stored positions, default: 5)
 radar_atc.trail_len = 5
 
-# Distance de liaison automatique ordinateur → aéroport (mètres, défaut : 500)
+# Automatic computer → airport link distance (meters, default: 500)
 radar_atc.airport_link_r = 500
 
-# Activer le système de transpondeur (true/false, défaut : true)
+# Enable the transponder system (true/false, default: true)
 radar_atc.transponder_enabled = true
 
-# Portée maximale sans transpondeur (mètres, défaut : 1000)
+# Maximum range without transponder (meters, default: 1000)
 radar_atc.transponder_free_radius = 1000
 
-# Distance de détection du transpondeur / antenne autour de l'aéroport (blocs, défaut : 75)
+# Transponder / antenna detection distance around the airport (blocks, default: 75)
 radar_atc.transponder_link_r = 75
 
-# Vitesse de rotation de l'antenne ASR (rad/s, défaut : 0.55)
+# ASR antenna rotation speed (rad/s, default: 0.55)
 radar_atc.transponder_rotation_speed = 0.55
 
-# Durée avant qu'une demande ATC devienne « ancienne » (secondes, défaut : 90)
+# Duration before an ATC request becomes "stale" (seconds, default: 90)
 radar_atc.req_stale_age = 90
 
-# Anti-doublon commande /atc (secondes, défaut : 15)
+# /atc command anti-duplicate (seconds, default: 15)
 radar_atc.req_cmd_cooldown = 15
 
-# Nombre maximum de lignes NOTAM par aéroport (défaut : 10)
+# Maximum number of NOTAM lines per airport (default: 10)
 radar_atc.notam_max_lines = 10
 
-# Nombre de décisions conservées dans le log ATC (défaut : 10)
+# Number of decisions kept in the ATC log (default: 10)
 radar_atc.atc_log_max = 10
 ```
 
 ---
 
-## Flux de travail typique
+## Typical Workflow
 
-### Mise en place d'un aéroport
+### Setting Up an Airport
 
-1. Placer un **laptop** près de l'aéroport (dans un rayon de 500 m du centre)
-2. Ouvrir l'application Radar ATC → onglet **Admin** → mot de passe `admin`
-3. Créer un aéroport : identifiant OACI (ex. `LFPG`), nom, position du centre
-4. Ajouter les pistes avec leurs coordonnées et désignations
-5. Placer un **Transpondeur ASR** à moins de 75 blocs du centre pour débloquer les portées > 1 000 m
+1. Place a **laptop** near the airport (within 500 m of the center)
+2. Open the Radar ATC app → **Admin** tab → password `admin`
+3. Create an airport: ICAO identifier (e.g. `LFPG`), name, center position
+4. Add runways with their coordinates and designations
+5. Place an **ASR Transponder** within 75 blocks of the center to unlock ranges > 1,000 m
 
-### Contrôle d'un aéroport distant
+### Controlling a Remote Airport
 
-**Option A — Mot de passe :**
-1. Onglet Aéroports → sélectionner l'aéroport cible
-2. Cliquer `⊕ Prendre le contrôle`
-3. Saisir le mot de passe distant (défaut : `airport`)
+**Option A — Password:**
+1. Airports tab → select the target airport
+2. Click `⊕ Take control`
+3. Enter the remote password (default: `airport`)
 
-**Option B — Antenne de liaison :**
-1. Placer une **Antenne de liaison ATC** à moins de 75 blocs de l'ordinateur
-2. L'interface affiche directement `📡 Antenne de liaison [ID] Nom` et un bouton de connexion directe
+**Option B — Link Antenna:**
+1. Place an **ATC Link Antenna** within 75 blocks of the computer
+2. The interface directly shows `📡 Link antenna [ID] Name` and a direct connect button
 
-### Workflow pilote
+### Pilot Workflow
 
-1. `/atc airport` — trouver l'identifiant et la direction de l'aéroport le plus proche
-2. `/atc LFPG landing` — envoyer une demande d'atterrissage
-3. Attendre la réponse de l'ATC (dans le jeu, par chat ou radio)
-4. `/atc LFPG msg <texte>` — communiquer librement avec la tour
+1. `/atc airport` — find the identifier and direction of the nearest airport
+2. `/atc LFPG landing` — send a landing request
+3. Wait for the ATC response (in-game, via chat or radio)
+4. `/atc LFPG msg <text>` — communicate freely with the tower
 
 ---
 
-## Architecture technique
+## Technical Architecture
 
 ```
 radar_atc/
-├── init.lua          — Point d'entrée, enregistrement de l'app laptop, privilège atc
-├── config.lua        — Paramètres globaux (CFG), lecture depuis minetest.conf
-├── storage.lua       — Persistance : aéroports, état ATC, mots de passe, NOTAM, logs
-├── utils.lua         — Fonctions utilitaires (distances, noms de pistes, helpers UI)
-├── scan.lua          — Détection des avions dans le rayon radar
-├── transponder.lua   — Nœuds ASR + antenne liaison, flag has_transponder par aéroport
-├── ui_tabs.lua       — Construction des formspecs (4 onglets)
-├── fields.lua        — Gestion des interactions utilisateur (tous les champs)
-├── commands.lua      — Commandes chat /atc et /notam
-├── models/           — Meshes 3D OBJ (antenne ASR, socle, tour liaison)
-└── textures/         — Textures PNG (icônes, palettes, items de craft)
+├── init.lua          — Entry point, laptop app registration, atc privilege
+├── config.lua        — Global parameters (CFG), reading from minetest.conf
+├── storage.lua       — Persistence: airports, ATC state, passwords, NOTAMs, logs
+├── utils.lua         — Utility functions (distances, runway names, UI helpers)
+├── scan.lua          — Aircraft detection within radar range
+├── transponder.lua   — ASR node + link antenna, has_transponder flag per airport
+├── ui_tabs.lua       — Formspec construction (4 tabs)
+├── fields.lua        — User interaction handling (all fields)
+├── commands.lua      — Chat commands /atc and /notam
+├── models/           — 3D OBJ meshes (ASR antenna, base, link tower)
+└── textures/         — PNG textures (icons, palettes, craft items)
 ```
 
-**Stockage (mod_storage) :**
-- `airports_v5` — liste des aéroports (id, nom, pos, pistes, has_transponder)
-- `atc_<ID>` — état ATC par aéroport (demandes, conversations radio)
-- `atclog_<ID>` — log des décisions par aéroport
-- `notam_<ID>` — NOTAM par aéroport
-- `indep_strips_v1` — pistes indépendantes
-- `passwords_v1` — mots de passe persistants
+**Storage (mod_storage):**
+- `airports_v5` — airport list (id, name, pos, runways, has_transponder)
+- `atc_<ID>` — ATC state per airport (requests, radio conversations)
+- `atclog_<ID>` — decision log per airport
+- `notam_<ID>` — NOTAMs per airport
+- `indep_strips_v1` — independent runways
+- `passwords_v1` — persistent passwords
 
 ---
 
-## Licence
+## License
 
-| Contenu | Licence |
-|---------|----------|
-| Code source (`.lua`) | [MIT](https://opensource.org/licenses/MIT) |
-| Modèles 3D et textures | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
+| Content | License |
+|---------|---------|
+| Source code (`.lua`) | [MIT](https://opensource.org/licenses/MIT) |
+| 3D models and textures | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
 
-Auteur : **Luffy0805**
+Author: **Luffy0805**

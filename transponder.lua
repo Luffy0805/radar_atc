@@ -1,11 +1,13 @@
 -- =============================================================
--- radar_atc/transponder.lua  —  Antenne Radar ASR + Antenne de liaison
+-- radar_atc/transponder.lua  —  ASR Radar Antenna + Antenne de liaison
 -- =============================================================
 
--- Signale la présence/absence d'un transpondeur à l'aéroport le plus proche.
--- Appelé par on_construct et on_destruct du nœud transponder.
+-- Signals the presence/absence of a transponder to the nearest airport.
+-- Called by on_construct and on_destruct of the transponder node.
+local S = minetest.get_translator("radar_atc")
+
 local function transponder_notify(pos, present)
-    local ap = linked_ap(pos)  -- aéroport dans airport_link_r blocs
+    local ap = linked_ap(pos)  -- airport within airport_link_r blocks
     if not ap then return end
     local airports = get_airports()
     for i, a in ipairs(airports) do
@@ -17,23 +19,23 @@ local function transponder_notify(pos, present)
     end
 end
 
--- Vérifie qu'un transpondeur est associé à l'aéroport actif.
--- Utilise le flag stocké (fonctionne même si les chunks sont distants).
+-- Checks that a transponder is associated with the active airport.
+-- Uses stored flag (works even if chunks are distant).
 -- ap_center = position de l'aéroport (pour fallback find_nodes si chunk chargé)
 function transponder_ok(ap_center, radius)
     if not CFG.transponder_enabled then return true end
     if radius <= CFG.transponder_free_radius then return true end
     if not ap_center then return false end
-    -- Chercher l'aéroport dont la position correspond à ap_center
+    -- Find the airport whose position matches ap_center
     for _, a in ipairs(get_airports()) do
         if a.pos then
             local dx = math.abs(a.pos.x - ap_center.x)
             local dy = math.abs(a.pos.y - ap_center.y)
             local dz = math.abs(a.pos.z - ap_center.z)
             if dx < 2 and dy < 2 and dz < 2 then
-                -- Aéroport trouvé : utiliser le flag persistant
+                -- Airport found: use the persistent flag
                 if a.has_transponder then return true end
-                -- Fallback : vérification physique si chunk chargé
+                -- Fallback: physical check if chunk is loaded
                 local r = CFG.transponder_link_r or 75
                 local nodes = minetest.find_nodes_in_area(
                     {x=ap_center.x-r, y=ap_center.y-r, z=ap_center.z-r},
@@ -41,7 +43,7 @@ function transponder_ok(ap_center, radius)
                     {"radar_atc:transponder"}
                 )
                 if #nodes > 0 then
-                    -- Mettre à jour le flag
+                    -- Update the flag
                     for i, ai in ipairs(get_airports()) do
                         if ai.id == a.id then
                             get_airports()[i].has_transponder = true
@@ -54,7 +56,7 @@ function transponder_ok(ap_center, radius)
             end
         end
     end
-    -- Aéroport non trouvé : fallback physique
+    -- Airport not found: physical fallback
     local r = CFG.transponder_link_r or 75
     local nodes = minetest.find_nodes_in_area(
         {x=ap_center.x-r, y=ap_center.y-r, z=ap_center.z-r},
@@ -64,8 +66,8 @@ function transponder_ok(ap_center, radius)
     return #nodes > 0
 end
 
--- Vérifie qu'une antenne de liaison existe près de l'ORDINATEUR (ordi_pos).
--- Aucune configuration requise : sa simple présence suffit.
+-- Checks that a link antenna exists near the COMPUTER (ordi_pos).
+-- No configuration required: its mere presence is enough.
 function link_antenna_ok(ordi_pos)
     if not ordi_pos then return false end
     local r = CFG.transponder_link_r or 75
@@ -78,7 +80,7 @@ function link_antenna_ok(ordi_pos)
 end
 
 -- ─────────────────────────────────────────────────────────────
---  OFFSETS
+--  OFFSETS (mesh pivot adjustments)
 -- ─────────────────────────────────────────────────────────────
 local BASE_Y      = -1.00
 local DISH_Y      =  3.00
@@ -86,7 +88,7 @@ local WAKE_RADIUS = 48
 local SLEEP_CHECK =  2.0
 
 -- =============================================================
---  ENTITE SOCLE (fixe)
+--  BASE ENTITY (fixed, no rotation)
 -- =============================================================
 minetest.register_entity("radar_atc:radar_base_entity", {
     initial_properties = {
@@ -107,7 +109,7 @@ minetest.register_entity("radar_atc:radar_base_entity", {
 })
 
 -- =============================================================
---  ENTITE ANTENNE (tournante)
+--  DISH ENTITY (rotating)
 -- =============================================================
 minetest.register_entity("radar_atc:radar_dish", {
     initial_properties = {
@@ -150,16 +152,16 @@ minetest.register_entity("radar_atc:radar_dish", {
 
 -- =============================================================
 --  SPAWN / REMOVE / CHECK
---  Anti-doublon : on compte les entités AVANT de spawner.
---  Si la bonne quantité est déjà là, on ne fait rien.
+--  Anti-duplicate: count entities BEFORE spawning.
+--  If the right quantity is already present, do nothing.
 -- =============================================================
 local function count_dish_entities(pos)
     local dish_count = 0
     local base_count = 0
-    -- Balayer toute la hauteur possible des deux entités
+    -- Scan the full possible height range of both entities
     local ymin = pos.y + math.min(BASE_Y, DISH_Y) - 2
     local ymax = pos.y + math.max(BASE_Y, DISH_Y) + 4
-    -- get_objects_inside_radius centré au milieu
+    -- get_objects_inside_radius centered in the middle
     local cy = (ymin + ymax) / 2
     local cr = (ymax - ymin) / 2 + 2
     for _, obj in ipairs(minetest.get_objects_inside_radius(
@@ -206,11 +208,11 @@ local function spawn_one(ename, offset, pos)
     end
 end
 
--- spawn_all : vérifie d'abord qu'on n'a pas déjà les entités
+-- spawn_all: first checks we do not already have the entities
 local function spawn_all(pos)
     local dish_n, base_n = count_dish_entities(pos)
-    if dish_n >= 1 and base_n >= 1 then return end  -- déjà présentes, rien à faire
-    -- Si doublon partiel : nettoyer et repartir proprement
+    if dish_n >= 1 and base_n >= 1 then return end  -- already present, nothing to do
+    -- Partial duplicate: clean up and restart properly
     if dish_n > 1 or base_n > 1 then remove_all(pos) end
     if dish_n == 0 then spawn_one("radar_atc:radar_dish",        DISH_Y, pos) end
     if base_n == 0 then spawn_one("radar_atc:radar_base_entity", BASE_Y, pos) end
@@ -219,7 +221,7 @@ end
 local function check_and_respawn(pos)
     local dish_n, base_n = count_dish_entities(pos)
     if dish_n > 1 or base_n > 1 then
-        -- Doublon détecté : purge complète puis respawn propre
+        -- Duplicate detected: full purge then clean respawn
         remove_all(pos)
         spawn_one("radar_atc:radar_dish",        DISH_Y, pos)
         spawn_one("radar_atc:radar_base_entity", BASE_Y, pos)
@@ -229,10 +231,10 @@ local function check_and_respawn(pos)
 end
 
 -- =============================================================
---  NŒUD ANCRE — Antenne Radar ASR
+--  ANCHOR NODE — ASR Radar Antenna
 -- =============================================================
 minetest.register_node("radar_atc:transponder", {
-    description         = "Antenne Radar ASR",
+    description         = S("ASR Radar Antenna"),
     drawtype            = "nodebox",
     tiles               = {"radar_atc_radar_base.png"},
     inventory_image     = "radar_atc_transponder_item.png",
@@ -251,7 +253,7 @@ minetest.register_node("radar_atc:transponder", {
         },
     },
     on_construct = function(pos)
-        minetest.get_meta(pos):set_string("infotext","Antenne Radar ASR\n(active)")
+        minetest.get_meta(pos):set_string("infotext","ASR Radar Antenna\n(active)")
         minetest.after(0.5, spawn_all, pos)
         minetest.get_node_timer(pos):start(10)
         minetest.after(0.1, function() transponder_notify(pos, true) end)
@@ -263,20 +265,20 @@ minetest.register_node("radar_atc:transponder", {
     on_timer    = function(pos) check_and_respawn(pos); return true end,
 })
 
--- LBM : au chargement du chunk, on démarre le timer
--- (pas de spawn direct ici — le timer appellera check_and_respawn après 10s,
---  ce qui évite la double-spawn LBM + on_construct/timer)
+-- LBM: on chunk load, start the timer
+-- (no direct spawn here — the timer will call check_and_respawn after 10s,
+--  which avoids double-spawn LBM + on_construct/timer)
 minetest.register_lbm({
     name              = "radar_atc:respawn_dish",
     nodenames         = {"radar_atc:transponder"},
     run_at_every_load = true,
     action = function(pos)
-        -- On utilise minetest.after avec un délai aléatoire [1.0, 2.5]
-        -- pour éviter que tous les transponders chargent en même temps
-        -- ET pour laisser le temps aux entités déjà sérialisées de s'activer
+        -- Use minetest.after with a random delay [1.0, 2.5]
+        -- to avoid all transponders loading at the same time
+        -- AND to give time for already-serialized entities to activate
         local delay = 1.0 + math.random() * 1.5
         minetest.after(delay, function()
-            -- Vérifier que le nœud est toujours là
+            -- Check that the node is still there
             if minetest.get_node(pos).name == "radar_atc:transponder" then
                 check_and_respawn(pos)
                 minetest.get_node_timer(pos):start(10)
@@ -287,7 +289,7 @@ minetest.register_lbm({
 
 
 -- =============================================================
---  ITEMS DE CRAFT  (non posables, composants techniques)
+--  CRAFT ITEMS  (non-placeable, technical components)
 -- =============================================================
 local function register_craft_item(name, desc, texture)
     minetest.register_craftitem("radar_atc:" .. name, {
@@ -298,28 +300,28 @@ local function register_craft_item(name, desc, texture)
 end
 
 register_craft_item("module_com",
-    "Module de communication ATC\n(Composant — non posable)",
+    S("ATC Communication Module\n(Component — not placeable)"),
     "radar_atc_module_com.png")
 
 register_craft_item("parabole",
-    "Parabole de réception\n(Composant — non posable)",
+    S("Reception Dish\n(Component — not placeable)"),
     "radar_atc_parabole.png")
 
 register_craft_item("waveguide",
-    "Guide d'onde hyperfréquence\n(Composant — non posable)",
+    S("Microwave Waveguide\n(Component — not placeable)"),
     "radar_atc_waveguide.png")
 
 register_craft_item("magnetron",
-    "Magnétron radar\n(Composant — non posable)",
+    S("Radar Magnetron\n(Component — not placeable)"),
     "radar_atc_magnetron.png")
 
 register_craft_item("rotator",
-    "Moteur de rotation azimut\n(Composant — non posable)",
+    S("Azimuth Rotator Motor\n(Component — not placeable)"),
     "radar_atc_rotator.png")
 
--- Crafts des composants eux-mêmes
+-- Component crafts
 if minetest.get_modpath("default") then
-    -- Module de communication : circuit mese + cuivre + or
+    -- Communication module: mese circuit + copper + gold
     minetest.register_craft({
         output = "radar_atc:module_com",
         recipe = {
@@ -328,7 +330,7 @@ if minetest.get_modpath("default") then
             {"default:gold_ingot",    "default:mese_crystal",  "default:gold_ingot"},
         },
     })
-    -- Parabole : acier + diamant (surface polie) + verre
+    -- Reception dish: steel + diamond (polished surface)
     minetest.register_craft({
         output = "radar_atc:parabole",
         recipe = {
@@ -337,7 +339,7 @@ if minetest.get_modpath("default") then
             {"",                      "default:steel_ingot",   ""},
         },
     })
-    -- Guide d'onde : cuivre + or (haute conductivité)
+    -- Waveguide: copper + gold (high conductivity)
     minetest.register_craft({
         output = "radar_atc:waveguide 2",
         recipe = {
@@ -346,7 +348,7 @@ if minetest.get_modpath("default") then
             {"default:copper_ingot",  "default:gold_ingot",    "default:copper_ingot"},
         },
     })
-    -- Magnétron : mese + acier + aimant (obsidienne)
+    -- Magnetron: mese + steel + magnet (obsidian)
     minetest.register_craft({
         output = "radar_atc:magnetron",
         recipe = {
@@ -355,7 +357,7 @@ if minetest.get_modpath("default") then
             {"default:obsidian",      "default:steel_ingot",   "default:obsidian"},
         },
     })
-    -- Moteur de rotation : acier + cuivre + mese
+    -- Rotation motor: steel + copper + mese
     minetest.register_craft({
         output = "radar_atc:rotator",
         recipe = {
@@ -367,7 +369,7 @@ if minetest.get_modpath("default") then
 end
 
 if minetest.get_modpath("default") then
-    -- Transponder ASR : magnétron + parabole + moteur + module com + acier
+    -- ASR Transponder: magnetron + dish + rotator + com module + steel
     minetest.register_craft({
         output = "radar_atc:transponder",
         recipe = {
@@ -379,16 +381,14 @@ if minetest.get_modpath("default") then
 end
 
 -- =============================================================
---  ANTENNE DE LIAISON  radar_atc:link_antenna
+--  LINK ANTENNA  radar_atc:link_antenna
 --
---  Permet de prendre le contrôle d'un aéroport distant
---  SANS mot de passe (ou en alternative au mot de passe).
---  L'opérateur configure l'ID de l'aéroport cible dans les
---  métadonnées du nœud via l'interface de droite-clic.
+--  Allows taking control of a remote airport
+--  WITHOUT a password (or as an alternative to the password).
 -- =============================================================
 
 -- =============================================================
---  ENTITE ANTENNE DE LIAISON (mesh fixe, pas de rotation)
+--  LINK ANTENNA ENTITY (fixed mesh, no rotation)
 -- =============================================================
 minetest.register_entity("radar_atc:link_antenna_entity", {
     initial_properties = {
@@ -408,7 +408,7 @@ minetest.register_entity("radar_atc:link_antenna_entity", {
     on_deactivate = function(self) end,
 })
 
-local LINK_PIVOT_Y = - 0.5    -- pivot bas du mesh = niveau du nœud ancre
+local LINK_PIVOT_Y = - 0.5    -- mesh bottom pivot = anchor node level
 
 local function spawn_link(pos)
     local ep = {x=pos.x, y=pos.y + LINK_PIVOT_Y, z=pos.z}
@@ -437,7 +437,7 @@ local function check_link(pos)
 end
 
 minetest.register_node("radar_atc:link_antenna", {
-    description         = "Antenne de liaison ATC",
+    description         = S("ATC Link Antenna"),
     drawtype            = "nodebox",
     tiles               = {"radar_atc_radar_base.png"},
     inventory_image     = "radar_atc_link_antenna.png",
@@ -452,10 +452,8 @@ minetest.register_node("radar_atc:link_antenna", {
 
     on_construct = function(pos)
         minetest.get_meta(pos):set_string("infotext",
-            "Antenne de liaison ATC\n" ..
-            "Autorise la connexion à tout aéroport sans mot de passe\n" ..
-            "depuis un radar situé à moins de " ..
-            tostring(CFG.transponder_link_r or 75) .. " blocs.")
+            "ATC Link Antenna\n" ..
+            S("Allows connection to any airport without password\nfrom a radar within @1 blocks.", CFG.transponder_link_r or 75))
         minetest.after(0.5, spawn_link, pos)
         minetest.get_node_timer(pos):start(12)
     end,
@@ -478,7 +476,7 @@ minetest.register_lbm({
 })
 
 if minetest.get_modpath("default") then
-    -- Antenne de liaison : parabole + guide d'onde + module com (sans rotator)
+    -- Link antenna: dish + waveguide + com module (no rotator)
     minetest.register_craft({
         output = "radar_atc:link_antenna",
         recipe = {

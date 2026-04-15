@@ -1,10 +1,10 @@
 -- =============================================================
--- radar_atc/scan.lua  --  Detection et suivi des avions
+-- radar_atc/scan.lua  --  Aircraft detection and tracking
 -- =============================================================
 
--- uid base sur l'ID interne de l'objet Lua :
---   - stable pendant toute la duree de vie de l'entite
---   - unique meme si deux avions identiques ont le meme owner
+-- uid based on the internal Lua object ID:
+--   - stable for the entire lifetime of the entity
+--   - unique even if two identical aircraft have the same owner
 local function uid_from_obj(obj)
     if obj.get_id then
         return tostring(obj:get_id())
@@ -13,20 +13,20 @@ local function uid_from_obj(obj)
 end
 
 -- =============================================================
---  AUTONOMIE -- formule generique airutils
---  conso/sec = power_lever / DIVISEUR * 20
---  autonomie (min) = energy / conso_sec / 60
+--  RANGE / AUTONOMY -- generic airutils formula
+--  consumption/sec = power_lever / DIVISOR * 20
+--  autonomy (min) = energy / conso_sec / 60
 --
---  DIVISEURS par modele (_fuel_consumption_divisor) :
---    PA-28                 -> 700000  (defaut airutils, non defini dans mod)
---    Super Cub             -> 700000  (defaut airutils, non defini dans mod)
---    Super Duck Hydroplane -> 700000  (copie supercub)
---    Ju 52 3M              -> 500000  (defini dans ju52/init.lua)
---    Ju52 3M Hydroplane    -> 500000  (copie ju52)
---    trike                 -> 1200000 (defini dans trike/init.lua)
+--  DIVISORS per model (_fuel_consumption_divisor):
+--    PA-28                 -> 700000  (airutils default, not defined in mod)
+--    Super Cub             -> 700000  (airutils default, not defined in mod)
+--    Super Duck Hydroplane -> 700000  (copy of supercub)
+--    Ju 52 3M              -> 500000  (defined in ju52/init.lua)
+--    Ju52 3M Hydroplane    -> 500000  (copy of ju52)
+--    trike                 -> 1200000 (defined in trike/init.lua)
 --
---  Pour ajouter un avion : chercher _fuel_consumption_divisor dans
---  son init.lua. Si absent, utiliser 700000 (defaut airutils).
+--  To add an aircraft: look for _fuel_consumption_divisor in
+--  its init.lua. If absent, use 700000 (airutils default).
 -- =============================================================
 local AUTONOMY_DIVISORS = {
     ["PA-28"]                  = 700000,
@@ -72,7 +72,7 @@ function scan(cpos, radius, old, trails, active_ap)
             local e = obj:get_luaentity()
             if e and e._vehicle_name then
                 local pilot = (e.driver_name and e.driver_name ~= "") and e.driver_name or nil
-                -- Si les commandes ont été transférées au co-pilote, c'est lui le pilote actif
+                -- If commands were transferred to the co-pilot, they are the active pilot
                 local active_pilot = pilot
                 if e._command_is_given and e.co_pilot and e.co_pilot ~= "" then
                     active_pilot = e.co_pilot

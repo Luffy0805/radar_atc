@@ -1,30 +1,32 @@
 -- =============================================================
--- radar_atc/init.lua  —  Point d'entrée du mod
--- Layout confirmé par analyse des apps natives laptop :
---   Barre launcher : y = -0.31 à +0.30 (NE PAS toucher)
---   Onglets        : y = 0.32, h = 0.55  → fin à 0.87
---   Contenu        : y = 0.97  →  y_max = 9.62
---   x_max safe     : 14.80
+-- radar_atc/init.lua  —  Mod entry point
+-- Layout confirmed by analysis of native laptop apps:
+--   Launcher bar : y = -0.31 to +0.30 (DO NOT touch)
+--   Tabs         : y = 0.32, h = 0.55  → ends at 0.87
+--   Content      : y = 0.97  →  y_max = 9.62
+--   x_max safe   : 14.80
 -- =============================================================
 
--- Ordre de chargement important : les dépendances en premier
+-- Important load order: dependencies first
+local S = minetest.get_translator("radar_atc")
+
 dofile(minetest.get_modpath("radar_atc") .. "/config.lua")
 
 -- =============================================================
---  PRIVILÈGE ATC
---  Permet d'accéder à l'admin sans mot de passe,
---  de voir et modifier les mots de passe depuis l'interface.
+--  ATC PRIVILEGE
+--  Allows admin access without password,
+--  and to view/modify passwords from the interface.
 -- =============================================================
 minetest.register_privilege("atc", {
-    description = "Accès ATC : administration radar sans mot de passe, gestion des mdp",
+    description = "ATC access: radar admin without password, password management",
     give_to_singleplayer = false,
 })
 
--- Table des radars actifs (globale, référencée par storage.lua et commands.lua)
+-- Active radar nodes table (global, referenced by storage.lua and commands.lua)
 active_nodes = {}
 
 dofile(minetest.get_modpath("radar_atc") .. "/storage.lua")
--- Charger les mots de passe persistés (écrasent les valeurs par défaut de config.lua)
+-- Load persisted passwords (overwrite default values from config.lua)
 load_passwords_into_cfg()
 dofile(minetest.get_modpath("radar_atc") .. "/utils.lua")
 dofile(minetest.get_modpath("radar_atc") .. "/transponder.lua")
@@ -34,12 +36,12 @@ dofile(minetest.get_modpath("radar_atc") .. "/fields.lua")
 dofile(minetest.get_modpath("radar_atc") .. "/commands.lua")
 
 -- =============================================================
---  ENREGISTREMENT APP
+--  APP REGISTRATION
 -- =============================================================
 laptop.register_app("radar_atc", {
-    app_name = "Radar ATC",
+    app_name = S("Air Traffic Control Radar"),
     app_icon = "radar_atc_icon.png",
-    app_info = "Surveillance aérienne",
+    app_info = S("Air Surveillance"),
 
     formspec_func = function(app, mtos)
         local data = mtos.bdev:get_app_storage('ram', 'radar')
@@ -68,7 +70,7 @@ laptop.register_app("radar_atc", {
 
     receive_fields_func = function(app, mtos, sender, fields)
         local data = mtos.bdev:get_app_storage('ram', 'radar')
-        data._player_name = sender:get_player_name()  -- pour vérif priv dans tab_admin
+        data._player_name = sender:get_player_name()  -- for priv check in tab_admin
         data.center_pos = data.center_pos or {x=mtos.pos.x, y=mtos.pos.y, z=mtos.pos.z}
         active_nodes[pk(mtos.pos)] = {
             pos        = {x=mtos.pos.x, y=mtos.pos.y, z=mtos.pos.z},
@@ -89,7 +91,7 @@ laptop.register_app("radar_atc", {
                         and data.planes[data.selected] or nil
         local new_planes, new_trails = scan(cpos, data.radius, data.planes, data.trails, linked)
 
-        -- Ne rebuild le formspec QUE si quelque chose a changé
+        -- Only rebuild formspec IF something changed
         local changed = (#new_planes ~= #(data.planes or {}))
         if not changed then
             for i, p in ipairs(new_planes) do
@@ -107,7 +109,7 @@ laptop.register_app("radar_atc", {
         if old_sel then
             data.selected = 0
             for i, p in ipairs(data.planes) do
-                -- Priorité à obj_id (unique), fallback sur model+owner pour compatibilité
+                -- Priority to obj_id (unique), fallback on model+owner for compatibility
                 if (old_sel.obj_id and p.obj_id == old_sel.obj_id)
                    or (not old_sel.obj_id and p.model == old_sel.model and p.owner == old_sel.owner) then
                     data.selected = i; break
@@ -115,6 +117,6 @@ laptop.register_app("radar_atc", {
             end
         end
 
-        return true  -- toujours true : arrêter le timer tuerait les trails
+        return true  -- always true: stopping the timer would kill the trails
     end,
 })

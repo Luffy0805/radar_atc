@@ -1,9 +1,9 @@
 -- =============================================================
--- radar_atc/utils.lua  —  Conversions, géographie, helpers formspec
+-- radar_atc/utils.lua  —  Conversions, geography, formspec helpers
 -- =============================================================
 
 -- =============================================================
---  CONVERSIONS UNITÉS
+--  UNIT CONVERSIONS
 -- =============================================================
 function yaw2head(y)
     return math.floor(((math.deg(y) + 180) % 360) + 0.5) % 360
@@ -11,7 +11,7 @@ end
 
 function head2card(h)
     local d = {"N","NNE","NE","ENE","E","ESE","SE","SSE",
-                "S","SSO","SO","OSO","O","ONO","NO","NNO"}
+                "S","SSW","SW","WSW","W","WNW","NW","NNW"}
     return d[math.floor((h + 11.25) / 22.5) % 16 + 1]
 end
 
@@ -47,7 +47,7 @@ function climb_s(r)
 end
 
 -- =============================================================
---  GÉOGRAPHIE / AÉROPORTS
+--  GEOGRAPHY / AIRPORTS
 -- =============================================================
 function bearing(p1, p2)
     return math.deg(math.atan2(p2.x - p1.x, -(p2.z - p1.z))) % 360
@@ -68,12 +68,12 @@ function rwy_name(p1, p2, suffix)
     return string.format("%02d%s/%02d%s", lo, so, hi, s)
 end
 
--- Cap → direction cardinale textuelle
+-- Heading → cardinal direction text
 function cap_to_dir(cap)
-    local dirs = {"nord","nord-nord-est","nord-est","est-nord-est",
-                  "est","est-sud-est","sud-est","sud-sud-est",
-                  "sud","sud-sud-ouest","sud-ouest","ouest-sud-ouest",
-                  "ouest","ouest-nord-ouest","nord-ouest","nord-nord-ouest"}
+    local dirs = {"north","north-northeast","northeast","east-northeast",
+                  "east","east-southeast","southeast","south-southeast",
+                  "south","south-southwest","southwest","west-southwest",
+                  "west","west-northwest","northwest","north-northwest"}
     return dirs[math.floor((cap + 11.25) / 22.5) % 16 + 1]
 end
 
@@ -105,29 +105,29 @@ function rw_len(rw)
 end
 
 -- =============================================================
---  PROJECTION RADAR
+--  RADAR PROJECTION
 -- =============================================================
 function w2r(tp, cp, radius)
     local dx = (tp.x - cp.x) / radius
     local dz = -(tp.z - cp.z) / radius
     local sx = CFG.RW / 2 + dx * CFG.RW / 2
     local sy = CFG.RH / 2 + dz * CFG.RH / 2
-    -- Retourne nil si hors du radar (pas de clamp sur le centre)
+    -- Returns nil if outside radar (no clamping at center)
     if sx < 0.05 or sx > CFG.RW - 0.25 or sy < 0.05 or sy > CFG.RH - 0.25 then
         return nil, nil
     end
     return sx, sy
 end
 
--- Clip le segment [p1→p2] (coords monde) sur le rectangle du radar.
--- Retourne (x1,y1, x2,y2) en coords formspec, ou nil si le segment est
--- entièrement hors du radar.
--- Algorithme de Liang-Barsky : préserve exactement l'orientation p1→p2.
+-- Clip the segment [p1→p2] (world coords) to the radar rectangle.
+-- Returns (x1,y1, x2,y2) in formspec coords, or nil if the segment is
+-- entirely outside the radar.
+-- Liang-Barsky algorithm: preserves exactly the p1→p2 orientation.
 function clip_segment(p1, p2, cp, radius)
     local xmin, xmax = 0.05, CFG.RW - 0.25
     local ymin, ymax = 0.05, CFG.RH - 0.25
 
-    -- Projeter les deux extrémités en coords formspec
+    -- Project both endpoints to formspec coords
     local ax = CFG.RW / 2 + (p1.x - cp.x) / radius * CFG.RW / 2
     local ay = CFG.RH / 2 - (p1.z - cp.z) / radius * CFG.RH / 2
     local bx = CFG.RW / 2 + (p2.x - cp.x) / radius * CFG.RW / 2
@@ -137,9 +137,9 @@ function clip_segment(p1, p2, cp, radius)
     local dy = by - ay
     local t0, t1 = 0.0, 1.0
 
-    -- Liang-Barsky : 4 bords
+    -- Liang-Barsky: 4 edges
     local function clip(p, q)
-        if p == 0 then return q >= 0 end  -- parallèle : dedans si q>=0
+        if p == 0 then return q >= 0 end  -- parallel: inside if q>=0
         local r = q / p
         if p < 0 then
             if r > t1 then return false end
@@ -162,8 +162,8 @@ function clip_segment(p1, p2, cp, radius)
            ax + t1 * dx, ay + t1 * dy
 end
 
--- Compat : conservé pour ne pas casser d'éventuels appels existants.
--- Préférer clip_segment pour tracer des segments.
+-- Compat: kept to avoid breaking any existing calls.
+-- Prefer clip_segment for drawing segments.
 function w2r_clamp(tp, cp, radius)
     local dx = (tp.x - cp.x) / radius
     local dz = -(tp.z - cp.z) / radius
@@ -185,7 +185,7 @@ function w2r_clamp(tp, cp, radius)
 end
 
 -- =============================================================
---  HELPERS FORMSPEC
+--  FORMSPEC HELPERS
 -- =============================================================
 function fe(s)  return minetest.formspec_escape(tostring(s or "")) end
 function clr(c, t) return minetest.colorize(c, tostring(t or "")) end
@@ -208,7 +208,7 @@ function scroll_bar(x, y, h, name)
     return string.format("scrollbar[%.2f,%.2f;0.25,%.2f;vertical;%s;0]", x, y, h, name)
 end
 
--- Clé de position (pour identifier un nœud dans active_nodes)
+-- Position key (to identify a node in active_nodes)
 function pk(pos)
     return math.floor(pos.x).."_"..math.floor(pos.y).."_"..math.floor(pos.z)
 end

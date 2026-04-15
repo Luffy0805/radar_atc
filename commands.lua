@@ -1,6 +1,8 @@
 -- =============================================================
--- radar_atc/commands.lua  —  Commandes chat /atc
+-- radar_atc/commands.lua  —  Chat commands /atc
 -- =============================================================
+
+local S = minetest.get_translator("radar_atc")
 
 local function in_aircraft(name)
     local p = minetest.get_player_by_name(name)
@@ -58,29 +60,29 @@ local function push_radio(airport_id, from, txt)
 end
 
 minetest.register_chatcommand("atc", {
-    params = "<ID_aéroport|airport> <landing|takeoff|flyover|approach|msg> [param]",
+    params = "<airport_ID|airport> <landing|takeoff|flyover|approach|msg> [param]",
     description = table.concat({
-        "Communication avec la tour de contrôle ATC.",
-        "  /atc airport               — affiche l'aéroport enregistré le plus proche",
-        "  /atc <ID> landing          — demande d'autorisation d'atterrissage",
-        "  /atc <ID> takeoff          — demande d'autorisation de décollage",
-        "  /atc <ID> flyover <alt_m>  — demande de survol à l'altitude indiquée (en mètres)",
-        "  /atc <ID> approach         — demande d'instructions d'approche",
-        "  /atc <ID> msg <texte>      — message radio libre vers la tour",
-        "Toutes les commandes (sauf 'airport') nécessitent d'être à bord d'un avion.",
+        "ATC tower communication.",
+        "  /atc airport               — shows the nearest registered airport",
+        "  /atc <ID> landing          — request landing clearance",
+        "  /atc <ID> takeoff          — request takeoff clearance",
+        "  /atc <ID> flyover <alt_m>  — request flyover at given altitude (meters)",
+        "  /atc <ID> approach         — request approach instructions",
+        "  /atc <ID> msg <text>       — free radio message to the tower",
+        "All commands (except 'airport') require being on board an aircraft.",
     }, "\n"),
     func = function(name, param)
         local args = {}
         for w in param:gmatch("%S+") do table.insert(args, w) end
         local player = minetest.get_player_by_name(name)
-        if not player then return false, "Joueur introuvable." end
+        if not player then return false, "Player not found." end
 
         -- /atc airport
         if args[1] and args[1]:lower() == "airport" then
             local ppos = player:get_pos()
             local ap, d = nearest_ap(ppos)
             if ap and ap.pos then
-                -- Calcul direction cardinal
+                -- Cardinal direction calculation
                 local dx = ap.pos.x - ppos.x
                 local dz = ap.pos.z - ppos.z
                 local angle = math.deg(math.atan2(dx, dz)) % 360
@@ -88,46 +90,46 @@ minetest.register_chatcommand("atc", {
                               "S","SSO","SO","OSO","O","ONO","NO","NNO"}
                 local dir = dirs[math.floor((angle + 11.25) / 22.5) % 16 + 1]
                 return true, clr("#88CCFF",
-                    string.format("[ATC] Plus proche : [%s] %s — %dm — %s",
+                    string.format("[ATC] Nearest: [%s] %s — %dm — %s",
                         ap.id, ap.name, math.floor(d), dir))
             elseif ap then
                 return true, clr("#88CCFF",
-                    string.format("[ATC] Plus proche : [%s] %s — %dm", ap.id, ap.name, math.floor(d)))
+                    string.format("[ATC] Nearest: [%s] %s — %dm", ap.id, ap.name, math.floor(d)))
             end
-            return true, clr("#FFAA44", "[ATC] Aucun aéroport enregistré.")
+            return true, clr("#FFAA44", "[ATC] No airport registered.")
         end
 
         local aid    = args[1] and args[1]:upper()
         local action = args[2] and args[2]:lower()
         if not aid or not action then
-            return false, "Usage : /atc <ID|airport> <landing|takeoff|flyover|approach|msg> [param]"
+            return false, "Usage: /atc <ID|airport> <landing|takeoff|flyover|approach|msg> [param]"
         end
 
         local ap = find_ap(aid)
         if not ap then
-            return false, clr("#FF4444", "[ATC] '" .. aid .. "' inconnu. Essayez /atc airport")
+            return false, clr("#FF4444", "[ATC] '" .. aid .. "' unknown. Try /atc airport")
         end
 
         local ok, model, owner = in_aircraft(name)
         if not ok then
-            return false, clr("#FF4444", "[ATC] Vous devez être à bord d'un avion.")
+            return false, clr("#FF4444", "[ATC] You must be on board an aircraft.")
         end
 
         if action == "msg" then
             local txt = table.concat(args, " ", 3):match("^%s*(.-)%s*$")
-            if txt == "" then return false, "Usage : /atc " .. aid .. " msg <texte>" end
+            if txt == "" then return false, "Usage: /atc " .. aid .. " msg <text>" end
             push_radio(aid, name, txt)
-            return true, clr("#FFFF44", "[ATC " .. aid .. "] Message radio envoyé.")
+            return true, clr("#FFFF44", "[ATC " .. aid .. "] Radio message sent.")
         end
 
         local valid = {landing=true, takeoff=true, flyover=true, approach=true}
         if not valid[action] then
-            return false, "Action invalide : landing, takeoff, flyover, approach, msg"
+            return false, "Invalid action: landing, takeoff, flyover, approach, msg"
         end
 
         local alt = tonumber(args[3])
         if action == "flyover" and not alt then
-            return false, "Précisez l'altitude : /atc " .. aid .. " flyover 500"
+            return false, "Specify altitude: /atc " .. aid .. " flyover 500"
         end
 
         local state = get_shared_atc(aid)
@@ -136,7 +138,7 @@ minetest.register_chatcommand("atc", {
         -- Anti-doublon
         for _, r in ipairs(state.requests) do
             if r.player == name and r.req_type == action and (os.time() - (r.time or 0)) < CFG.req_cmd_cooldown then
-                return false, clr("#FFAA44", "[ATC] Demande déjà envoyée, patientez.")
+                return false, clr("#FFAA44", "[ATC] Request already sent, please wait.")
             end
         end
 
@@ -155,45 +157,45 @@ minetest.register_chatcommand("atc", {
         end
 
         local tf = {
-            landing  = "d'atterrissage",
-            takeoff  = "de décollage",
-            flyover  = "de survol" .. (alt and (" à " .. alt .. "m/" .. to_ft(alt) .. "ft") or ""),
-            approach = "d'approche",
+            landing  = "landing request",
+            takeoff  = "takeoff request",
+            flyover  = "flyover at " .. (alt and (alt .. "m/" .. to_ft(alt) .. "ft") or ""),
+            approach = "approach request",
         }
         return true, clr("#FFFF44",
-            "[ATC " .. aid .. "] Demande " .. tf[action] .. " envoyée"
-            .. (has and "" or " (aucune tour active)") .. ".")
+            "[ATC " .. aid .. "] " .. tf[action] .. " sent"
+            .. (has and "" or " (no active tower)") .. ".")
     end,
 })
 
 -- =============================================================
---  COMMANDE /notam  —  Consultation des avis aux pilotes
+--  COMMAND /notam  —  Consult pilot notices
 -- =============================================================
 minetest.register_chatcommand("notam", {
-    params = "<ID_aéroport>",
+    params = "<airport_ID>",
     description = table.concat({
-        "Consulter les NOTAM (avis aux pilotes) d'un aéroport.",
-        "  /notam <ID>     — affiche les NOTAM de l'aéroport",
-        "  /notam nearest  — affiche les NOTAM de l'aéroport le plus proche",
+        "Consult pilot notices (NOTAM) for an airport.",
+        "  /notam <ID>     — shows NOTAM for the airport",
+        "  /notam nearest  — shows NOTAM for the nearest airport",
     }, "\n"),
     func = function(name, param)
         local arg = param:match("^%s*(.-)%s*$")
         if arg == "" then
-            return false, "Usage : /notam <ID_aéroport> ou /notam nearest"
+            return false, "Usage: /notam <airport_ID> or /notam nearest"
         end
 
         local ap
         if arg:lower() == "nearest" then
             local player = minetest.get_player_by_name(name)
-            if not player then return false, "Joueur introuvable." end
+            if not player then return false, "Player not found." end
             ap = nearest_ap(player:get_pos())
             if not ap then
-                return true, clr("#FFAA44", "[NOTAM] Aucun aéroport enregistré.")
+                return true, clr("#FFAA44", "[NOTAM] No airport registered.")
             end
         else
             ap = find_ap(arg:upper())
             if not ap then
-                return false, clr("#FF4444", "[NOTAM] Aéroport '" .. arg:upper() .. "' inconnu.")
+                return false, clr("#FF4444", "[NOTAM] Airport '" .. arg:upper() .. "' unknown.")
             end
         end
 

@@ -1,0 +1,15 @@
+# Radar ATC — Translation template
+# 
+# To add a new language, copy this file to:
+#   locale/radar_atc.<lang_code>.tr
+# where <lang_code> is the ISO 639-1 code (e.g. de, es, pt, ru...)
+#
+# Format: English key=Your translation
+# Variables: @1 @2 @3... are substituted at runtime (do not translate them)
+# Lines starting with # are comments
+#
+# Example for German (radar_atc.de.tr):
+#   Range:=Reichweite:
+#   Airports=Flughäfen
+#
+# See locale/radar_atc.fr.tr for a complete example.

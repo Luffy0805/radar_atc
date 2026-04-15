@@ -1,5 +1,5 @@
 -- =============================================================
--- radar_atc/storage.lua  —  Stockage persistant (aéroports + ATC)
+-- radar_atc/storage.lua  —  Persistent storage (airports + ATC)
 -- =============================================================
 
 local ST = minetest.get_mod_storage()
@@ -17,7 +17,7 @@ function save_airports()
     ST:set_string("airports_v5", minetest.serialize(_ap_cache or {}))
 end
 
--- État ATC partagé entre tous les nœuds d'un même aéroport
+-- ATC state shared between all nodes of the same airport
 function get_shared_atc(airport_id)
     if not airport_id then return {requests={}, conversations={}} end
     local r = ST:get_string("atc_" .. airport_id)
@@ -28,7 +28,7 @@ end
 function save_shared_atc(airport_id, state)
     if not airport_id then return end
     ST:set_string("atc_" .. airport_id, minetest.serialize(state))
-    -- Notifie tous les nœuds actifs de cet aéroport
+    -- Notify all active nodes for this airport
     for _, info in pairs(active_nodes or {}) do
         if info.airport_id == airport_id then
             local mt = laptop.os_get(info.pos)
@@ -60,8 +60,8 @@ function find_ap(id)
 end
 
 -- =============================================================
---  PISTES INDÉPENDANTES (sans ATC dédié)
---  Structure : {name=str, p1={x,y,z}, p2={x,y,z}, width=int, note=str}
+--  INDEPENDENT RUNWAYS (no dedicated ATC)
+--  Structure: {name=str, p1={x,y,z}, p2={x,y,z}, width=int, note=str}
 -- =============================================================
 local _strip_cache = nil
 
@@ -78,7 +78,7 @@ function save_strips()
 end
 
 -- =============================================================
---  NOTAM  (avis aux pilotes, par aéroport)
+--  NOTAM  (pilot notices, per airport)
 --  Structure : liste de strings, une par ligne
 -- =============================================================
 function get_notam(airport_id)
@@ -93,7 +93,7 @@ function save_notam(airport_id, lines)
 end
 
 -- =============================================================
---  LOG ATC  (dernières autorisations/refus, par aéroport)
+--  ATC LOG  (latest authorizations/refusals, per airport)
 --  Structure : {time, player, model, req_type, decision, runway}
 -- =============================================================
 function get_atc_log(airport_id)
@@ -105,14 +105,14 @@ end
 function push_atc_log(airport_id, entry)
     if not airport_id then return end
     local log = get_atc_log(airport_id)
-    table.insert(log, 1, entry)  -- plus récent en premier
+    table.insert(log, 1, entry)  -- most recent first
     while #log > (CFG.atc_log_max or 10) do table.remove(log) end
     ST:set_string("atclog_" .. airport_id, minetest.serialize(log))
 end
 
 -- =============================================================
---  MOTS DE PASSE  (persistants, modifiables sans redémarrage)
---  Stockés dans mod_storage, prioritaires sur config.lua
+--  PASSWORDS  (persistent, modifiable without restart)
+--  Stored in mod_storage, take priority over config.lua
 -- =============================================================
 function get_passwords()
     local r = ST:get_string("passwords_v1")
@@ -123,7 +123,7 @@ function save_passwords(pw_table)
     ST:set_string("passwords_v1", minetest.serialize(pw_table))
 end
 
--- Appelé depuis init.lua au démarrage : charge les mdp persistés dans CFG
+-- Called from init.lua at startup: loads persisted passwords into CFG
 function load_passwords_into_cfg()
     local pw = get_passwords()
     if pw.admin  and pw.admin  ~= "" then CFG.radar_password_admin  = pw.admin  end
