@@ -70,7 +70,7 @@ function scan(cpos, radius, old, trails, active_ap)
     for _, obj in ipairs(objs) do
         if not obj:is_player() then
             local e = obj:get_luaentity()
-            if e and e._vehicle_name then
+            if e and e._vehicle_name and (e._max_plane_hp or e._climb_rate ~= nil) then
                 local pilot = (e.driver_name and e.driver_name ~= "") and e.driver_name or nil
                 -- If commands were transferred to the co-pilot, they are the active pilot
                 local active_pilot = pilot

@@ -21,7 +21,7 @@ end
 
 -- Checks that a transponder is associated with the active airport.
 -- Uses stored flag (works even if chunks are distant).
--- ap_center = position de l'aéroport (pour fallback find_nodes si chunk chargé)
+-- ap_center = airport position (for find_nodes fallback when chunk is loaded)
 function transponder_ok(ap_center, radius)
     if not CFG.transponder_enabled then return true end
     if radius <= CFG.transponder_free_radius then return true end
@@ -189,7 +189,7 @@ local function remove_all(pos)
         if ent then
             local n = ent.name or ""
             if n == "radar_atc:radar_dish" or n == "radar_atc:radar_base_entity" then
-                -- Vérifier que c'est bien lié à CE nœud
+                -- Verify that this is indeed linked to THIS node
                 local np = ent._node_pos
                 if np and np.x==pos.x and np.y==pos.y and np.z==pos.z then
                     obj:remove()
@@ -249,7 +249,7 @@ minetest.register_node("radar_atc:transponder", {
     node_box = {
         type="fixed",
         fixed={
-            {-0.50,-0.50,-0.50,  0.50, 0.50, 0.50},  -- cube plein (collision complète)
+            {-0.50,-0.50,-0.50,  0.50, 0.50, 0.50},  -- full cube (complete collision)
         },
     },
     on_construct = function(pos)
@@ -295,7 +295,7 @@ local function register_craft_item(name, desc, texture)
     minetest.register_craftitem("radar_atc:" .. name, {
         description = desc,
         inventory_image = texture,
-        groups = {not_in_creative_inventory=1},
+        groups = {},
     })
 end
 
@@ -319,63 +319,68 @@ register_craft_item("rotator",
     S("Azimuth Rotator Motor\n(Component — not placeable)"),
     "radar_atc_rotator.png")
 
--- Component crafts
+-- =============================================================
+--  CRAFT RECIPES — Minetest Game (default)
+-- =============================================================
+
 if minetest.get_modpath("default") then
-    -- Communication module: mese circuit + copper + gold
+    -- Communication module: gold + mese crystal (circuitry) + copper
     minetest.register_craft({
         output = "radar_atc:module_com",
         recipe = {
-            {"default:gold_ingot",    "default:mese_crystal",  "default:gold_ingot"},
-            {"default:copper_ingot",  "default:steel_ingot",   "default:copper_ingot"},
-            {"default:gold_ingot",    "default:mese_crystal",  "default:gold_ingot"},
+            {"default:gold_ingot",   "default:mese_crystal", "default:gold_ingot"},
+            {"default:copper_ingot", "default:steel_ingot",  "default:copper_ingot"},
+            {"default:gold_ingot",   "default:mese_crystal", "default:gold_ingot"},
         },
     })
-    -- Reception dish: steel + diamond (polished surface)
+
+    -- Reception dish: steel (shaped reflector) + diamond (polished surface)
     minetest.register_craft({
         output = "radar_atc:parabole",
         recipe = {
-            {"default:steel_ingot",   "",                      "default:steel_ingot"},
-            {"default:steel_ingot",   "default:diamond",       "default:steel_ingot"},
-            {"",                      "default:steel_ingot",   ""},
+            {"default:steel_ingot", "",               "default:steel_ingot"},
+            {"default:steel_ingot", "default:diamond","default:steel_ingot"},
+            {"",                    "default:steel_ingot", ""},
         },
     })
-    -- Waveguide: copper + gold (high conductivity)
+
+    -- Waveguide: copper + gold tubes (high conductivity), yields 2
     minetest.register_craft({
         output = "radar_atc:waveguide 2",
         recipe = {
-            {"default:copper_ingot",  "default:gold_ingot",    "default:copper_ingot"},
-            {"default:copper_ingot",  "",                      "default:copper_ingot"},
-            {"default:copper_ingot",  "default:gold_ingot",    "default:copper_ingot"},
+            {"default:copper_ingot", "default:gold_ingot",   "default:copper_ingot"},
+            {"default:copper_ingot", "",                     "default:copper_ingot"},
+            {"default:copper_ingot", "default:gold_ingot",   "default:copper_ingot"},
         },
     })
-    -- Magnetron: mese + steel + magnet (obsidian)
+
+    -- Magnetron: obsidian (magnetic) + steel + mese block (high-power emitter)
     minetest.register_craft({
         output = "radar_atc:magnetron",
         recipe = {
-            {"default:obsidian",      "default:steel_ingot",   "default:obsidian"},
-            {"default:steel_ingot",   "default:mese",          "default:steel_ingot"},
-            {"default:obsidian",      "default:steel_ingot",   "default:obsidian"},
+            {"default:obsidian",     "default:steel_ingot",  "default:obsidian"},
+            {"default:steel_ingot",  "default:mese",         "default:steel_ingot"},
+            {"default:obsidian",     "default:steel_ingot",  "default:obsidian"},
         },
     })
-    -- Rotation motor: steel + copper + mese
+
+    -- Azimuth rotator motor: steel + copper windings + mese crystal
     minetest.register_craft({
         output = "radar_atc:rotator",
         recipe = {
-            {"default:steel_ingot",   "default:copper_ingot",  "default:steel_ingot"},
-            {"default:copper_ingot",  "default:mese_crystal",  "default:copper_ingot"},
-            {"default:steel_ingot",   "default:copper_ingot",  "default:steel_ingot"},
+            {"default:steel_ingot",  "default:copper_ingot", "default:steel_ingot"},
+            {"default:copper_ingot", "default:mese_crystal", "default:copper_ingot"},
+            {"default:steel_ingot",  "default:copper_ingot", "default:steel_ingot"},
         },
     })
-end
 
-if minetest.get_modpath("default") then
-    -- ASR Transponder: magnetron + dish + rotator + com module + steel
+    -- ASR Transponder: dish + magnetron + waveguide + rotator + com module
     minetest.register_craft({
         output = "radar_atc:transponder",
         recipe = {
-            {"radar_atc:parabole",    "radar_atc:magnetron",   "radar_atc:parabole"},
-            {"radar_atc:waveguide",   "radar_atc:rotator",     "radar_atc:waveguide"},
-            {"default:steelblock",    "radar_atc:module_com",  "default:steelblock"},
+            {"radar_atc:parabole",  "radar_atc:magnetron",  "radar_atc:parabole"},
+            {"radar_atc:waveguide", "radar_atc:rotator",    "radar_atc:waveguide"},
+            {"default:steelblock",  "radar_atc:module_com", "default:steelblock"},
         },
     })
 end
@@ -476,7 +481,7 @@ minetest.register_lbm({
 })
 
 if minetest.get_modpath("default") then
-    -- Link antenna: dish + waveguide + com module (no rotator)
+    -- Link antenna: dish + waveguide + com module + magnetron
     minetest.register_craft({
         output = "radar_atc:link_antenna",
         recipe = {

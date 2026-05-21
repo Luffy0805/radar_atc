@@ -2,6 +2,8 @@
 -- radar_atc/utils.lua  —  Conversions, geography, formspec helpers
 -- =============================================================
 
+local S = minetest.get_translator("radar_atc")
+
 -- =============================================================
 --  UNIT CONVERSIONS
 -- =============================================================
@@ -70,10 +72,12 @@ end
 
 -- Heading → cardinal direction text
 function cap_to_dir(cap)
-    local dirs = {"north","north-northeast","northeast","east-northeast",
-                  "east","east-southeast","southeast","south-southeast",
-                  "south","south-southwest","southwest","west-southwest",
-                  "west","west-northwest","northwest","north-northwest"}
+    local dirs = {
+        S("north"), S("north-northeast"), S("northeast"), S("east-northeast"),
+        S("east"), S("east-southeast"), S("southeast"), S("south-southeast"),
+        S("south"), S("south-southwest"), S("southwest"), S("west-southwest"),
+        S("west"), S("west-northwest"), S("northwest"), S("north-northwest")
+    }
     return dirs[math.floor((cap + 11.25) / 22.5) % 16 + 1]
 end
 

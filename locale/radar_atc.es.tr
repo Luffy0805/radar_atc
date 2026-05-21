@@ -1,0 +1,230 @@
+# textdomain: radar_atc
+
+### Application ###
+Air Traffic Control Radar=Radar de control de tráfico aéreo
+Air Surveillance=Vigilancia aérea
+ATC access: radar admin without password, password management=Acceso ATC: administración radar sin contraseña, gestión de contraseñas
+Radar=Radar
+Airports=Aeropuertos
+ATC=ATC
+Admin=Admin
+
+### Radar tab ###
+Range:=Alcance:
+Outside airport=Fuera del aeropuerto
+⊕ Remote: @1=⊕ Remoto: @1
+Select an aircraft below=Seleccionar una aeronave abajo
+No airport. Use the Admin tab.=Sin aeropuerto. Use la pestaña Admin.
+⚠ Transponder required above @1m=⚠ Transpondedor obligatorio por encima de @1 m
+Model   : @1=Modelo   : @1
+Owner   : @1=Propietario: @1
+Pilot   : @1=Piloto   : @1
+Heading : @1° @2=Rumbo    : @1° @2
+Speed   : @1=Velocidad: @1
+Throttle: @1%=Gas      : @1 %
+HP      : @1=PV       : @1
+Fuel    : @1=Combustible: @1
+Altitude: @1 @2=Altitud  : @1 @2
+Distance: @1m=Distancia: @1 m
+Range   : @1=Autonomía: @1
+Range   : engine off=Autonomía: motor apagado
+Fuel    : @1L / @2L=Combustible: @1 L / @2 L
+Range   : @1m / @2 min=Autonomía: @1 m / @2 min
+(stopped)=(en tierra)
+ (stopped)= (en tierra)
+@1 contact=@1 contacto
+@1 contacts=@1 contactos
+
+### Airports tab ###
+Airport:=Aeropuerto:
+Independent runways (no ATC) — nearest first=Pistas independientes (sin ATC) — la más cercana primero
+Name=Nombre
+Length=Long.
+Width=Ancho
+Approach coordinates by direction=Coordenadas de aproximación por dirección
+Desig.=Desig.
+Runway=Pista
+@1 runway=@1 pista
+@1 runways=@1 pistas
+No runway registered.=Ninguna pista registrada.
+ ← linked= ← vinculado
+ ← controlled= ← controlado
+⟵ Return to linked airport=⟵ Volver al aeropuerto vinculado
+⟵ Return to this linked airport=⟵ Volver a este aeropuerto vinculado
+This computer controls its home airport.=Este ordenador controla su aeropuerto de origen.
+📡 Link antenna active=📡 Antena de enlace activa
+Connection authorized without password.=Conexión autorizada sin contraseña.
+⊕ Take control=⊕ Tomar el control
+⊕ Take control of [@1]=⊕ Tomar el control de [@1]
+Password required — =Contraseña requerida — 
+Password=Contraseña
+Confirm=Confirmar
+Cancel=Cancelar
+◀ Prev.=◀ Ant.
+Next ▶=Sig. ▶
+(not linked to an airport)=(no vinculado a un aeropuerto)
+
+### ATC tab ###
+ATC — @1=ATC — @1
+Requests=Solicitudes
+Radio=Radio
+NOTAM=NOTAM
+Log=Registro
+Landing=Aterrizaje
+Takeoff=Despegue
+Flyover=Sobrevuelo
+Approach=Aproximación
+Page @1 / @2  (@3 requests)=Página @1 / @2  (@3 solicitudes)
+✔ Authorized=✔ Autorizado
+✕ Refuse=✕ Rechazar
+⏸ On hold=⏸ En espera
+⏸ Hold=⏸ Espera
+✕ Delete=✕ Eliminar
+← Select or create a conversation=← Seleccionar o crear una conversación
+⚡ Radio — @1=⚡ Radio — @1
+✕ Close=✕ Cerrar
+NOTAM — Pilot notices=NOTAM — Avisos a pilotos
+No linked airport.=Sin aeropuerto vinculado.
+No decision recorded.=Ninguna decisión registrada.
+Latest ATC decisions=Últimas decisiones ATC
+Send=Enviar
+Your message...=Su mensaje...
+Add NOTAM line...=Añadir línea NOTAM...
++ Add=+ Añadir
+
+### Admin tab ###
+Administration — Password required=Administración — Contraseña requerida
+Unlock=Desbloquear
+⚠ Default password — remember to change it (atc priv)=⚠ Contraseña por defecto — recuerde cambiarla (atc priv)
+🔑 Password management=🔑 Gestión de contraseñas
+Admin password:  @1=Contraseña admin:  @1
+New admin password=Nueva contraseña admin
+Remote password: @1=Contraseña remota: @1
+New remote password=Nueva contraseña remota
+✔ Save=✔ Guardar
+✔ Admin password updated.=✔ Contraseña admin actualizada.
+✗ Empty password ignored.=✗ Contraseña vacía ignorada.
+✔ Remote password updated.=✔ Contraseña remota actualizada.
+Registered airports=Aeropuertos registrados
++ New airport=+ Nuevo aeropuerto
+Independent runways →=Pistas independientes →
+🔑 Passwords=🔑 Contraseñas
+Page @1 / @2  (@3 airports)=Página @1 / @2  (@3 aeropuertos)
+No airport.=Sin aeropuerto.
+Runways →=Pistas →
+✕ Delete.=✕ Eliminar
+Create airport=Crear aeropuerto
+← Back=← Atrás
+ICAO identifier (max 6 chars e.g. LFPG):=Identificador OACI (máx. 6 car., p.ej. LEMD):
+Full airport name:=Nombre completo del aeropuerto:
+Center position X/Y/Z (empty \= computer position):=Posición central X/Y/Z (vacío \= posición del ordenador):
+✔ Create airport=✔ Crear aeropuerto
+ID '@1' already used.=El identificador «@1» ya está en uso.
+Runways — [@1] @2=Pistas — [@1] @2
++ New runway=+ Nueva pista
+Optional suffix (L, R, C or empty):=Sufijo opcional (L, R, C o vacío):
+Width (m):=Anchura (m):
+End 1 — X / Y / Z:=Extremo 1 — X / Y / Z:
+End 2 — X / Y / Z:=Extremo 2 — X / Y / Z:
+Optional approach coordinates (X,Z):=Coordenadas de aproximación opcionales (X,Z):
+Runway @1 (X,Z):=Pista @1 (X,Z):
+Number calculated automatically from coordinates.=Número calculado automáticamente a partir de las coordenadas.
+✔ Create runway=✔ Crear pista
+All coordinates are required.=Todas las coordenadas son obligatorias.
+New runway — [@1] @2=Nueva pista — [@1] @2
+Independent runways=Pistas independientes
+Visible on radar in orange. No dedicated ATC.=Visible en el radar en naranja. Sin ATC dedicado.
+New independent runway=Nueva pista independiente
+
+### Demandes ATC ###
+ago @1=hace @1
+Lnd.=Ater.
+Tkf.=Despg.
+⊕ App.=⊕ Apr.
+Alt.(m):=Alt. (m):
+Set=Aplicar
+landing request=solicitud de aterrizaje
+takeoff request=solicitud de despegue
+flyover at @1=sobrevuelo a @1
+approach request=solicitud de aproximación
+sent=enviada
+(no active tower)=(ninguna torre activa)
+
+UPD: =ACT: 
+
+ASR Radar Antenna=Antena radar ASR
+ATC Link Antenna=Antena de enlace ATC
+Allows connection to any airport without password\nfrom a radar within @1 blocks.=Permite la conexión a cualquier aeropuerto sin contraseña\ndesde un radar a menos de @1 bloques.
+ATC Communication Module\n(Component — not placeable)=Módulo de comunicación ATC\n(Componente — no colocable)
+Reception Dish\n(Component — not placeable)=Antena parabólica\n(Componente — no colocable)
+Microwave Waveguide\n(Component — not placeable)=Guía de ondas de microondas\n(Componente — no colocable)
+Radar Magnetron\n(Component — not placeable)=Magnetrón de radar\n(Componente — no colocable)
+Azimuth Rotator Motor\n(Component — not placeable)=Motor rotador de azimut\n(Componente — no colocable)
+
+### Commands ###
+[ATC] Nearest: [@1] @2 — @3m — @4=[ATC] Más cercano: [@1] @2 — @3 m — @4
+[ATC] Nearest: [@1] @2 — @3m=[ATC] Más cercano: [@1] @2 — @3 m
+[ATC] No airport registered.=[ATC] Ningún aeropuerto registrado.
+[ATC] You must be on board an aircraft.=[ATC] Debe estar a bordo de una aeronave.
+[ATC @1] Radio message sent.=[ATC @1] Mensaje de radio enviado.
+Specify altitude: /atc @1 flyover 500=Especifique la altitud: /atc @1 flyover 500
+[ATC] Request already sent, please wait.=[ATC] Solicitud ya enviada, por favor espere.
+[ATC @1] @2 request sent=[ATC @1] Solicitud de @2 enviada
+[ATC @1] @2 request sent (no active tower).=[ATC @1] Solicitud de @2 enviada (ninguna torre activa).
+[NOTAM] No airport registered.=[NOTAM] Ningún aeropuerto registrado.
+[NOTAM] Airport '@1' unknown.=[NOTAM] Aeropuerto «@1» desconocido.
+\=\=\= NOTAM [@1] @2 \=\=\==\=\=\= NOTAM [@1] @2 \=\=\=
+No active NOTAM.=Ningún NOTAM activo.
+
+### ATC decisions ###
+Wrong password.=Contraseña incorrecta.
+Incorrect password.=Contraseña incorrecta.
+Request already in progress (retry in @1s)=Solicitud en curso (reintente en @1 s)
+Authorized=Autorizado
+Refused=Rechazado
+On hold=En espera
+Hold your position.=Mantenga su posición.
+Contact tower.=Contacte con la torre.
+Runway=Pista
+Landing authorized — Runway @1=Aterrizaje autorizado — Pista @1
+Takeoff authorized — Runway @1=Despegue autorizado — Pista @1
+Contact tower on approach.=Contacte con la torre en la aproximación.
+@1 Approach runway @2: heading @3 (@4°), approach coords @5.=@1 Aproximación pista @2: rumbo @3 (@4°), coordenadas de aproximación @5.
+@1 Approach runway @2: no approach programmed, refer to runway coordinates (@3).=@1 Aproximación pista @2: sin aproximación programada, consulte las coordenadas de pista (@3).
+@1 Flyover authorized at @2m (@3ft)=@1 Sobrevuelo autorizado a @2 m (@3 ft)
+@1 Authorized=@1 Autorizado/a
+@1 Refused — Contact tower.=@1 Rechazado/a — Contacte con la torre.
+@1 On hold — Hold your position.=@1 En espera — Mantenga su posición.
+(Reply: /atc @1 msg <text>)=(Responder: /atc @1 msg <texto>)
+
+### Directions ###
+north=norte
+north-northeast=nor-noreste
+northeast=noreste
+east-northeast=estenoreste
+east=este
+east-southeast=estesureste
+southeast=sureste
+south-southeast=sursureste
+south=sur
+south-southwest=sursuroeste
+southwest=suroeste
+west-southwest=oestesuroeste
+west=oeste
+west-northwest=oestenoroeste
+northwest=noroeste
+north-northwest=nornoroeste
+
+### Radio tab ###
+Discussions=Conversaciones
++ Contact pilot=+ Contactar piloto
+Open conversation=Abrir conversación
+No pending request.=Ninguna solicitud pendiente.
+No active NOTAM.=Ningún NOTAM activo.
++ Add=+ Añadir
+Runways →=Pistas →
+Independent runways (no ATC)=Pistas independientes (sin ATC)
+↳ Independent runways=↳ Pistas independientes
+No independent runway.=Ninguna pista independiente.
+No runway.=Ninguna pista.
+New independent runway=Nueva pista independiente

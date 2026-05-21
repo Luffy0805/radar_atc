@@ -12,7 +12,8 @@ local function in_aircraft(name)
     local function ck(o)
         if not o then return false, nil, nil end
         local e = o:get_luaentity()
-        if e and e._vehicle_name then
+        -- Only accept airutils-based aircraft (not automobiles)
+        if e and e._vehicle_name and (e._max_plane_hp or e._climb_rate ~= nil) then
             return true, e._vehicle_name, e.owner
         end
         return false, nil, nil
@@ -112,7 +113,7 @@ minetest.register_chatcommand("atc", {
 
         local ok, model, owner = in_aircraft(name)
         if not ok then
-            return false, clr("#FF4444", "[ATC] You must be on board an aircraft.")
+            return false, clr("#FF4444", S("[ATC] You must be on board an aircraft."))
         end
 
         if action == "msg" then
@@ -157,14 +158,14 @@ minetest.register_chatcommand("atc", {
         end
 
         local tf = {
-            landing  = "landing request",
-            takeoff  = "takeoff request",
-            flyover  = "flyover at " .. (alt and (alt .. "m/" .. to_ft(alt) .. "ft") or ""),
-            approach = "approach request",
+            landing  = S("landing request"),
+            takeoff  = S("takeoff request"),
+            flyover  = S("flyover at @1", alt and (alt .. "m/" .. to_ft(alt) .. "ft") or ""),
+            approach = S("approach request"),
         }
         return true, clr("#FFFF44",
-            "[ATC " .. aid .. "] " .. tf[action] .. " sent"
-            .. (has and "" or " (no active tower)") .. ".")
+            "[ATC " .. aid .. "] " .. tf[action] .. " " .. S("sent")
+            .. (has and "" or " " .. S("(no active tower)")) .. ".")
     end,
 })
 
@@ -203,7 +204,7 @@ minetest.register_chatcommand("notam", {
         local header = clr("#88CCFF", "=== NOTAM [" .. ap.id .. "] " .. ap.name .. " ===")
         minetest.chat_send_player(name, header)
         if #lines == 0 then
-            minetest.chat_send_player(name, clr("#888888", "  Aucun NOTAM actif."))
+            minetest.chat_send_player(name, clr("#888888", "  No active NOTAM."))
         else
             for i, line in ipairs(lines) do
                 minetest.chat_send_player(name,

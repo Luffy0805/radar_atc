@@ -457,9 +457,14 @@ function do_fields(app, mtos, sender, fields)
                     for pn in (rw.name or ""):gmatch("[^/]+") do table.insert(parts, pn) end
                     for _, pn in ipairs(parts) do
                         if fields["atc_rw_" .. ri .. "_" .. rwi .. "_" .. pn] then
-                            local verb = req.req_type == "landing" and "Landing" or "Takeoff"
+                            local msg
+                            if req.req_type == "landing" then
+                                msg = S("Landing authorized — Runway @1", pn)
+                            else
+                                msg = S("Takeoff authorized — Runway @1", pn)
+                            end
                             minetest.chat_send_player(req.player,
-                                clr("#00FF88", atc_prefix .. " " .. verb .. " authorized — Runway " .. pn))
+                                clr("#00FF88", atc_prefix .. " " .. msg))
                             push_atc_log(linked, {
                                 time=os.time(), player=req.player, model=req.model or "?",
                                 req_type=req.req_type, decision="authorized", runway=pn
@@ -490,16 +495,13 @@ function do_fields(app, mtos, sender, fields)
                                 local pn_num = tonumber(pn:match("%d+")) or 0
                                 local cap_deg = pn_num * 10
                                 local dir = cap_to_dir(cap_deg)
-                                msg = string.format(
-                                    "%s Approche piste %s : cap %s (%.0f°), coords approche %s. "..
-                                    "Contact tower on approach.",
+                                msg = S("@1 Approach runway @2: heading @3 (@4°), approach coords @5.",
                                     atc_prefix, pn, dir, cap_deg, coords)
+                                    .. " " .. S("Contact tower on approach.")
                             else
                                 local pp = rw.p1 and
                                     string.format("%.0f,%.0f", rw.p1.x, rw.p1.z) or "?"
-                                msg = string.format(
-                                    "%s Approach runway %s: no approach programmed, "..
-                                    "refer to runway coordinates (%s).",
+                                msg = S("@1 Approach runway @2: no approach programmed, refer to runway coordinates (@3).",
                                     atc_prefix, pn, pp)
                             end
                             minetest.chat_send_player(req.player, clr("#44FFCC", msg))
@@ -520,11 +522,11 @@ function do_fields(app, mtos, sender, fields)
                 if req.req_type == "flyover" then
                     local alt = req.alt or 500
                     minetest.chat_send_player(req.player,
-                        clr("#00FF88", atc_prefix .. " Flyover authorized at "
-                            .. alt .. "m / " .. to_ft(alt) .. "ft"))
+                        clr("#00FF88", S("@1 Flyover authorized at @2m (@3ft)",
+                            atc_prefix, tostring(alt), tostring(to_ft(alt)))))
                 else
                     minetest.chat_send_player(req.player,
-                        clr("#00FF88", atc_prefix .. " Authorized"))
+                        clr("#00FF88", atc_prefix .. " " .. S("Authorized")))
                 end
                 push_atc_log(linked, {
                     time=os.time(), player=req.player, model=req.model or "?",
@@ -536,7 +538,7 @@ function do_fields(app, mtos, sender, fields)
             end
             if fields["atc_ref_" .. ri] then
                 minetest.chat_send_player(req.player,
-                    clr("#FF4444", atc_prefix .. " Refused — Contact tower."))
+                    clr("#FF4444", atc_prefix .. " " .. S("Refused") .. " — " .. S("Contact tower.")))
                 push_atc_log(linked, {
                     time=os.time(), player=req.player, model=req.model or "?",
                     req_type=req.req_type, decision="refused", runway=nil
@@ -549,7 +551,7 @@ function do_fields(app, mtos, sender, fields)
                 if req.status ~= "hold" then
                     req.status = "hold"
                     minetest.chat_send_player(req.player,
-                        clr("#FFAA00", atc_prefix .. " On hold — Hold your position."))
+                        clr("#FFAA00", atc_prefix .. " " .. S("On hold") .. " — " .. S("Hold your position.")))
                     save_shared_atc(linked, state)
                 end
                 return true
@@ -584,7 +586,7 @@ function do_fields(app, mtos, sender, fields)
                         table.insert(conv.messages, {from="atc", text=txt, time=os.time()})
                         minetest.chat_send_player(conv.pilot,
                             clr("#00FFFF", atc_prefix .. " " .. txt
-                                .. "  (Répondre: /atc " .. (linked or "?") .. " msg <text>)"))
+                                .. "  (Reply: /atc " .. (linked or "?") .. " msg <text>)"))
                         save_shared_atc(linked, state)
                         data.radio_draft = ""
                     end
