@@ -173,7 +173,7 @@ Specify altitude: /atc @1 flyover 500=Höhe angeben: /atc @1 flyover 500
 [ATC @1] @2 request sent (no active tower).=[ATC @1] @2-Anfrage gesendet (kein aktiver Tower).
 [NOTAM] No airport registered.=[NOTAM] Kein Flughafen registriert.
 [NOTAM] Airport '@1' unknown.=[NOTAM] Flughafen „@1" unbekannt.
-\=\=\= NOTAM [@1] @2 \=\=\==\=\=\= NOTAM [@1] @2 \=\=\=
+NOTAM header @1 @2=[ NOTAM @1 ] @2
 No active NOTAM.=Kein aktives NOTAM.
 
 ### ATC decisions and messages ###

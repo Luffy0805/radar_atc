@@ -201,10 +201,10 @@ minetest.register_chatcommand("notam", {
         end
 
         local lines = get_notam(ap.id)
-        local header = clr("#88CCFF", "=== NOTAM [" .. ap.id .. "] " .. ap.name .. " ===")
+        local header = clr("#88CCFF", S("NOTAM header @1 @2", "[" .. ap.id .. "]", ap.name))
         minetest.chat_send_player(name, header)
         if #lines == 0 then
-            minetest.chat_send_player(name, clr("#888888", "  No active NOTAM."))
+            minetest.chat_send_player(name, clr("#888888", "  " .. S("No active NOTAM.")))
         else
             for i, line in ipairs(lines) do
                 minetest.chat_send_player(name,

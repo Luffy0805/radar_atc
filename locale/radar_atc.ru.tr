@@ -173,7 +173,7 @@ Specify altitude: /atc @1 flyover 500=Укажите высоту: /atc @1 flyov
 [ATC @1] @2 request sent (no active tower).=[УВД @1] Запрос @2 отправлен (нет активной вышки).
 [NOTAM] No airport registered.=[НОТАМ] Нет зарегистрированных аэропортов.
 [NOTAM] Airport '@1' unknown.=[НОТАМ] Аэропорт «@1» неизвестен.
-\=\=\= NOTAM [@1] @2 \=\=\==\=\=\= НОТАМ [@1] @2 \=\=\=
+NOTAM header @1 @2=[ НОТАМ @1 ] @2
 No active NOTAM.=Нет активных НОТАМ.
 
 ### ATC decisions ###
