@@ -39,7 +39,7 @@ dofile(minetest.get_modpath("radar_atc") .. "/commands.lua")
 --  APP REGISTRATION
 -- =============================================================
 laptop.register_app("radar_atc", {
-    app_name = S("Air Traffic Control Radar"),
+    app_name = "Radar ATC",
     app_icon = "radar_atc_icon.png",
     app_info = S("Air Surveillance"),
 

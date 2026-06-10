@@ -135,6 +135,7 @@ New runway — [@1] @2=Nova pista — [@1] @2
 Independent runways=Pistas independentes
 Visible on radar in orange. No dedicated ATC.=Visível no radar a laranja. Sem ATC dedicado.
 New independent runway=Nova pista independente
+Strip name (e.g. North-Field):=Nome da pista (ex. Campo-Norte):
 
 ### Pedidos ATC ###
 ago @1=há @1
@@ -228,3 +229,14 @@ Independent runways (no ATC)=Pistas independentes (sem ATC)
 No independent runway.=Nenhuma pista independente.
 No runway.=Nenhuma pista.
 New independent runway=Nova pista independente
+
+P1/P2=P1/P2
+Pilot name:=Nome do piloto:
+Send ▶=Enviar ▶
+Position=Posição
+Distance=Distância
+Runways=Pistas
+App=Apr.
+← linked=← ligado
+← controlled=← controlado
+[ATC] Nearest independent runway: @1 — @2m — @3=[ATC] Pista independente mais próxima: @1 — @2 m — @3

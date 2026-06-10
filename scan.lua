@@ -72,12 +72,12 @@ function scan(cpos, radius, old, trails, active_ap)
             local e = obj:get_luaentity()
             if e and e._vehicle_name and (e._max_plane_hp or e._climb_rate ~= nil) then
                 local pilot = (e.driver_name and e.driver_name ~= "") and e.driver_name or nil
-                -- If commands were transferred to the co-pilot, they are the active pilot
                 local active_pilot = pilot
                 if e._command_is_given and e.co_pilot and e.co_pilot ~= "" then
                     active_pilot = e.co_pilot
                 end
-                if pilot or e.isonground == false then
+                -- Only show aircraft with an active pilot (filters ghost aircraft)
+                if pilot then
                     local pos    = obj:get_pos()
                     local vel    = obj:get_velocity() or {x=0, y=0, z=0}
                     local sp     = hspd(vel)

@@ -498,8 +498,8 @@ function tab_myairport(data, mtos)
     local is_linked = (viewing == linked)
     local is_active = (viewing == data.active_airport)
     local badge = ""
-    if is_linked then badge = badge .. clr("#00FF88", " ← linked") end
-    if is_active and not is_linked then badge = badge .. clr("#FF88FF", " ← controlled") end
+    if is_linked then badge = badge .. clr("#00FF88", S(" ← linked")) end
+    if is_active and not is_linked then badge = badge .. clr("#FF88FF", S(" ← controlled")) end
 
     table.insert(fs, string.format("box[0,%.2f;%.2f,0.50;#002244]", py, CFG.X_MAX))
     table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.02,
@@ -513,7 +513,7 @@ function tab_myairport(data, mtos)
     -- Control area
     if is_active and not is_linked then
         table.insert(fs, string.format("button[0.20,%.2f;6.0,0.50;ctrl_return;%s]",
-            py, fe(clr("#FFAA00", "⟵ Return to linked airport"))))
+            py, fe(clr("#FFAA00", S("⟵ Return to linked airport")))))
         py = py + 0.58
     elseif is_linked and (not data.active_airport or data.active_airport == linked) then
         table.insert(fs, string.format("box[0.20,%.2f;7.0,0.38;#002200]", py))
@@ -522,7 +522,7 @@ function tab_myairport(data, mtos)
         py = py + 0.46
     elseif is_linked and data.active_airport and data.active_airport ~= linked then
         table.insert(fs, string.format("button[0.20,%.2f;6.0,0.50;ctrl_return;%s]",
-            py, fe(clr("#FFAA00", "⟵ Return to this linked airport"))))
+            py, fe(clr("#FFAA00", S("⟵ Return to this linked airport")))))
         py = py + 0.58
     elseif data.myap_ctrl_mode == viewing then
         local has_link = link_antenna_ok(mtos.pos)
@@ -572,7 +572,7 @@ function tab_myairport(data, mtos)
 
     table.insert(fs, string.format("box[0,%.2f;%.2f,0.40;#003355]", py, CFG.X_MAX))
     local hdrs = {{0.20,S("Desig.")},{2.2,S("Length")},{4.0,S("Width")},
-                  {5.6,S("Approach coordinates by direction")},{12.0,"P1/P2"}}
+                  {5.6,S("Approach coordinates by direction")},{12.0,S("P1/P2")}}
     for _, h in ipairs(hdrs) do
         table.insert(fs, string.format("label[%.2f,%.2f;%s]", h[1], py + 0.00, clr("#AADDFF", h[2])))
     end
@@ -606,17 +606,28 @@ function tab_myairport(data, mtos)
         local p2s = rw.p2 and string.format("%.0f,%.0f,%.0f", rw.p2.x, rw.p2.y, rw.p2.z) or "?"
         local app_str = "—"
         if rw.approaches then
+            -- Sort approach entries so the one closest to p1 comes first
+            local parts_sorted = {}
+            for rn, coords in pairs(rw.approaches) do
+                local cx, cz = coords:match("(-?%d+%.?%d*),(-?%d+%.?%d*)")
+                local dist_p1 = math.huge
+                if cx and rw.p1 then
+                    dist_p1 = math.sqrt((tonumber(cx)-rw.p1.x)^2 + (tonumber(cz)-rw.p1.z)^2)
+                end
+                table.insert(parts_sorted, {rn=rn, coords=coords, d=dist_p1})
+            end
+            table.sort(parts_sorted, function(a, b) return a.d < b.d end)
             local parts = {}
-            for rn, coords in pairs(rw.approaches) do table.insert(parts, rn..":"..coords) end
+            for _, e in ipairs(parts_sorted) do table.insert(parts, e.rn..":"..e.coords) end
             if #parts > 0 then app_str = table.concat(parts, "  ") end
         end
         table.insert(fs, string.format("box[0,%.2f;%.2f,%.2f;#001122]", py, CFG.X_MAX, item_h))
         table.insert(fs, string.format("label[0.20,%.2f;%s]",  py+0.03, clr("#FFFFFF", rw.name or "?")))
         table.insert(fs, string.format("label[2.20,%.2f;%s]",  py+0.03, len.."m"))
         table.insert(fs, string.format("label[4.00,%.2f;%s]",  py+0.03, (rw.width or 30).."m"))
-        table.insert(fs, string.format("label[5.60,%.2f;%s]",  py+0.03, clr("#AAAACC", app_str:sub(1,28))))
-        table.insert(fs, string.format("label[12.00,%.2f;%s]", py+0.03,
-            clr("#555577", p1s:sub(1,12).."|"..p2s:sub(1,12))))
+        table.insert(fs, string.format("label[5.60,%.2f;%s]",  py+0.03, clr("#AAAACC", app_str)))
+        table.insert(fs, string.format("label[11.20,%.2f;%s]", py+0.03,
+            clr("#555577", p1s.."|"..p2s)))
         py = py + item_h
     end
 
@@ -776,9 +787,12 @@ function tab_atc(data, mtos)
                     for pn in (rw.name or ""):gmatch("[^/]+") do table.insert(parts, pn) end
                     for _, pn in ipairs(parts) do
                         if bx + 2.8 > CFG.X_MAX then break end
+                        -- Green if approach coords exist for this threshold, pink otherwise
+                        local has_app = rw.approaches and rw.approaches[pn]
+                        local btn_clr = has_app and "#44FFCC" or "#FF88AA"
                         table.insert(fs, string.format(
                             "button[%.2f,%.2f;2.7,0.46;atc_app_%d_%d_%s;%s]",
-                            bx, rpy, ri, rwi, pn, fe(clr("#44FFCC", S("⊕ App.") .. " " .. pn))))
+                            bx, rpy, ri, rwi, pn, fe(clr(btn_clr, S("⊕ App.") .. " " .. pn))))
                         bx = bx + 2.8
                     end
                 end
@@ -831,7 +845,8 @@ function tab_atc(data, mtos)
 
         if data.radio_new_mode then
             table.insert(fs, string.format("box[%.2f,%.2f;%.2f,1.00;#001122]", CX, py, CW))
-            table.insert(fs, string.format("label[%.2f,%.2f;Pilot name:]", CX + 0.15, py + 0.00))
+            table.insert(fs, string.format("label[%.2f,%.2f;%s]", CX + 0.15, py + 0.00,
+                clr("#4488CC", S("Pilot name:"))))
             table.insert(fs, string.format("field[%.2f,%.2f;%.2f,0.60;radio_new_target;;%s]",
                 CX + 0.35, py + 0.9, CW - 0.30, fe(data.radio_new_target or "")))
             table.insert(fs, string.format("button[%.2f,%.2f;3.5,0.50;radio_new_open;%s]",
@@ -862,26 +877,90 @@ function tab_atc(data, mtos)
         table.insert(fs, string.format("box[%.2f,%.2f;%.2f,%.2f;#0a0a1a]", CX, py, CW, hist_h))
         local msg_h  = 0.38
         local vis    = math.floor((hist_h - 0.1) / msg_h)
-        local mstart = math.max(1, #msgs - vis + 1)
+
+        -- Word-wrap helper: splits text into lines of at most max_w chars, breaking on spaces
+        local function word_wrap(text, max_w)
+            local lines = {}
+            local words = {}
+            for w in (text .. " "):gmatch("([^ ]*) ") do
+                table.insert(words, w)
+            end
+            local cur = ""
+            for _, w in ipairs(words) do
+                if cur == "" then
+                    cur = w
+                elseif #cur + 1 + #w <= max_w then
+                    cur = cur .. " " .. w
+                else
+                    table.insert(lines, cur)
+                    cur = w
+                end
+            end
+            if cur ~= "" then table.insert(lines, cur) end
+            if #lines == 0 then lines = {""} end
+            return lines
+        end
+
+        -- CW in formspec units; Minetest default font ≈ 0.115 units/char average
+        local chars_per_line = math.floor(CW / 0.115)
+        local indent = "    "
+
+        -- Pre-expand messages with proper word-wrap
+        local display_lines = {}
+        for _, m in ipairs(msgs) do
+            local who   = m.from == "atc" and "ATC" or (m.from or "?")
+            local mc    = m.from == "atc" and "#DD99FF" or "#66CCFF"
+            local tstr  = os.date("%H:%M", m.time or 0)
+            local prefix = tstr .. " " .. who .. ": "
+            local body   = m.text or ""
+            -- First line: prefix + text, remaining lines indented
+            local first_max = chars_per_line - #prefix
+            local rest_max  = chars_per_line - #indent
+            local all_words = {}
+            for w in (body .. " "):gmatch("([^ ]*) ") do
+                table.insert(all_words, w)
+            end
+            if #all_words == 0 then
+                table.insert(display_lines, {mc=mc, prefix=prefix, body=""})
+            else
+                local cur = ""
+                local is_first = true
+                local max_w = first_max
+                for _, w in ipairs(all_words) do
+                    if cur == "" then
+                        cur = w
+                    elseif #cur + 1 + #w <= max_w then
+                        cur = cur .. " " .. w
+                    else
+                        if is_first then
+                            table.insert(display_lines, {mc=mc, prefix=prefix, body=cur})
+                            is_first = false
+                            max_w = rest_max
+                        else
+                            table.insert(display_lines, {mc=mc, prefix=indent, body=cur})
+                        end
+                        cur = w
+                    end
+                end
+                if cur ~= "" then
+                    if is_first then
+                        table.insert(display_lines, {mc=mc, prefix=prefix, body=cur})
+                    else
+                        table.insert(display_lines, {mc=mc, prefix=indent, body=cur})
+                    end
+                end
+            end
+        end
+
+        local mstart = math.max(1, #display_lines - vis + 1)
         local lmy    = py + 0.06
-        for mi = mstart, #msgs do
+        for mi = mstart, #display_lines do
             if lmy + msg_h > py + hist_h - 0.02 then break end
-            local m    = msgs[mi]
-            local who  = m.from == "atc" and "ATC" or (m.from or "?")
-            local mc   = m.from == "atc" and "#DD99FF" or "#66CCFF"
-            local tstr = os.date("%H:%M", m.time or 0)
-            -- Pas de [ dans tstr (format HH:MM), mais m.text peut en contenir
-            -- We do NOT use minetest.colorize here as it generates sequences
-            -- escaped sequences incompatible with fe(). Displayed in white without color.
-            local line = string.format("%s %s: %s", tstr, who, m.text or "")
-            if #line > 63 then line = line:sub(1, 60) .. ".." end
-            -- Manual color prefix: sender name color only
-            local prefix = string.format("%s %s: ", tstr, who)
-            local body   = (m.text or ""):sub(1, 63 - #prefix)
+            local dl = display_lines[mi]
             table.insert(fs, string.format("label[%.2f,%.2f;%s%s]",
                 CX + 0.15, lmy,
-                minetest.colorize(mc, fe(prefix)),
-                fe(body)))
+                minetest.colorize(dl.mc, fe(dl.prefix)),
+                fe(dl.body)))
             lmy = lmy + msg_h
         end
         py = py + hist_h + 0.05
@@ -889,7 +968,7 @@ function tab_atc(data, mtos)
         table.insert(fs, string.format("field[%.2f,%.2f;%.2f,0.62;radio_rep_%d;;%s]",
             CX, py, CW - 3.0, data.radio_sel, fe(data.radio_draft or "")))
         table.insert(fs, string.format("button[%.2f,%.2f;2.8,0.62;radio_send_%d;%s]",
-            CX + CW - 2.9, py, data.radio_sel, fe(clr("#00FFFF", "Envoyer ▶"))))
+            CX + CW - 2.9, py, data.radio_sel, fe(clr("#00FFFF", S("Send ▶")))))
     end
 
     -- ===================== NOTAM =====================
@@ -1018,7 +1097,7 @@ function tab_admin(data, mtos)
             clr("#FFFF88", minetest.formspec_escape(CFG.radar_password_admin))))
         py = py + 0.46
         table.insert(fs, string.format(
-            "field[0.20,%.2f;9.0,0.62;new_pw_admin;" .. S("New admin password") .. ";]", py))
+            "field[0.20,%.2f;9.0,0.62;new_pw_admin;" .. clr("#CC88FF", S("New admin password")) .. ";]", py))
         table.insert(fs, string.format(
             "button[9.40,%.2f;5.0,0.62;save_pw_admin;" .. fe(S("✔ Save")) .. "]", py))
         py = py + 0.88
@@ -1030,7 +1109,7 @@ function tab_admin(data, mtos)
             clr("#FFFF88", minetest.formspec_escape(CFG.radar_password_remote))))
         py = py + 0.46
         table.insert(fs, string.format(
-            "field[0.20,%.2f;9.0,0.62;new_pw_remote;" .. S("New remote password") .. ";]", py))
+            "field[0.20,%.2f;9.0,0.62;new_pw_remote;" .. clr("#CC88FF", S("New remote password")) .. ";]", py))
         table.insert(fs, string.format(
             "button[9.40,%.2f;5.0,0.62;save_pw_remote;" .. fe(S("✔ Save")) .. "]", py))
         py = py + 0.90
@@ -1118,17 +1197,17 @@ function tab_admin(data, mtos)
         table.insert(fs, string.format("box[0,%.2f;%.2f,0.46;#002244]", py, CFG.X_MAX))
         table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.00, clr("#88CCFF", S("Create airport"))))
         table.insert(fs, string.format("button[12.2,%.2f;2.4,0.38;av_back;" .. fe(S("← Back")) .. "]", py + 0.04))
-        py = py + 0.58
-        table.insert(fs, string.format("label[0.20,%.2f;%s]", py, S("ICAO identifier (max 6 chars e.g. LFPG):"), py))
-        py = py + 0.36
+        py = py + 0.40
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#4488CC", S("ICAO identifier (max 6 chars e.g. LFPG):")), py))
+        py = py + 0.80
         table.insert(fs, string.format("field[0.20,%.2f;4.5,0.64;ap_id;;%s]", py, fe(data.n_ap_id or "")))
-        py = py + 0.82
-        table.insert(fs, string.format("label[0.20,%.2f;%s]", py, S("Full airport name:"), py))
-        py = py + 0.36
+        py = py + 0.40
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#4488CC", S("Full airport name:")), py))
+        py = py + 0.80
         table.insert(fs, string.format("field[0.20,%.2f;10,0.64;ap_name;;%s]", py, fe(data.n_ap_name or "")))
-        py = py + 0.82
-        table.insert(fs, string.format("label[0.20,%.2f;%s]", py, S("Center position X/Y/Z (empty \\= computer position):"), py))
-        py = py + 0.36
+        py = py + 0.40
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#4488CC", S("Center position X/Y/Z (empty \\= computer position):")), py))
+        py = py + 0.80
         table.insert(fs, string.format("field[0.20,%.2f;3.5,0.64;ap_px;;%s]", py, fe(data.n_ap_x or "")))
         table.insert(fs, string.format("field[3.90,%.2f;3.5,0.64;ap_py;;%s]", py, fe(data.n_ap_y or "")))
         table.insert(fs, string.format("field[7.60,%.2f;3.5,0.64;ap_pz;;%s]", py, fe(data.n_ap_z or "")))
@@ -1205,30 +1284,30 @@ function tab_admin(data, mtos)
         table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.00,
             minetest.colorize("#88CCFF", fe(S("New runway — [@1] @2", ap.id, ap.name)))))
         table.insert(fs, string.format("button[12.2,%.2f;2.4,0.38;av_back;" .. fe(S("← Back")) .. "]", py + 0.04))
-        py = py + 0.58
-        table.insert(fs, string.format("label[0.20,%.2f;%s]", py, S("Optional suffix (L, R, C or empty):"), py))
-        py = py + 0.36
+        py = py + 0.40
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#4488CC", S("Optional suffix (L, R, C or empty):")), py))
+        py = py + 0.80
         table.insert(fs, string.format("field[0.20,%.2f;2.5,0.62;rw_suf;;%s]", py, fe(data.n_rw_suf or "")))
+        py = py + 0.40
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#4488CC", S("Width (m):")), py))
         py = py + 0.80
-        table.insert(fs, string.format("label[0.20,%.2f;%s]", py, S("Width (m):"), py))
-        py = py + 0.36
         table.insert(fs, string.format("field[0.20,%.2f;3.0,0.62;rw_wid;;%s]", py, fe(data.n_rw_wid or "30")))
+        py = py + 0.40
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#4488CC", S("End 1 — X / Y / Z:")), py))
         py = py + 0.80
-        table.insert(fs, string.format("label[0.20,%.2f;%s]", py, S("End 1 — X / Y / Z:"), py))
-        py = py + 0.36
         table.insert(fs, string.format("field[0.20,%.2f;3.5,0.62;rw_p1x;;%s]", py, fe(data.n_rw_p1x or "")))
         table.insert(fs, string.format("field[3.90,%.2f;3.5,0.62;rw_p1y;;%s]", py, fe(data.n_rw_p1y or "")))
         table.insert(fs, string.format("field[7.60,%.2f;3.5,0.62;rw_p1z;;%s]", py, fe(data.n_rw_p1z or "")))
+        py = py + 0.40
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#4488CC", S("End 2 — X / Y / Z:")), py))
         py = py + 0.80
-        table.insert(fs, string.format("label[0.20,%.2f;%s]", py, S("End 2 — X / Y / Z:"), py))
-        py = py + 0.36
         table.insert(fs, string.format("field[0.20,%.2f;3.5,0.62;rw_p2x;;%s]", py, fe(data.n_rw_p2x or "")))
         table.insert(fs, string.format("field[3.90,%.2f;3.5,0.62;rw_p2y;;%s]", py, fe(data.n_rw_p2y or "")))
         table.insert(fs, string.format("field[7.60,%.2f;3.5,0.62;rw_p2z;;%s]", py, fe(data.n_rw_p2z or "")))
-        py = py + 0.80
+        py = py + 0.40
         table.insert(fs, string.format("label[0.20,%.2f;%s]", py,
             clr("#8888CC", S("Optional approach coordinates (X,Z):"))))
-        py = py + 0.36
+        py = py + 0.80
         local p1x_v = tonumber(data.n_rw_p1x); local p1z_v = tonumber(data.n_rw_p1z)
         local p2x_v = tonumber(data.n_rw_p2x); local p2z_v = tonumber(data.n_rw_p2z)
         local rn1, rn2 = "??", "??"
@@ -1319,30 +1398,30 @@ function tab_admin(data, mtos)
         table.insert(fs, string.format("box[0,%.2f;%.2f,0.46;#332200]", py, CFG.X_MAX))
         table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.00, clr("#FFAA44", S("New independent runway"))))
         table.insert(fs, string.format("button[12.2,%.2f;2.4,0.38;av_back;" .. fe(S("← Back")) .. "]", py + 0.04))
-        py = py + 0.58
-        table.insert(fs, string.format("label[0.20,%.2f;Strip name (e.g. North-Field):]", py))
-        py = py + 0.36
+        py = py + 0.40
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#4488CC", S("Strip name (e.g. North-Field):"))))
+        py = py + 0.80
         table.insert(fs, string.format("field[0.20,%.2f;6.0,0.62;strip_name;;%s]", py, fe(data.n_st_name or "")))
+        py = py + 0.40
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#4488CC", S("Width (m):")), py))
         py = py + 0.80
-        table.insert(fs, string.format("label[0.20,%.2f;%s]", py, S("Width (m):"), py))
-        py = py + 0.36
         table.insert(fs, string.format("field[0.20,%.2f;3.0,0.62;strip_wid;;%s]", py, fe(data.n_st_wid or "30")))
+        py = py + 0.40
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#4488CC", S("End 1 — X / Y / Z:")), py))
         py = py + 0.80
-        table.insert(fs, string.format("label[0.20,%.2f;%s]", py, S("End 1 — X / Y / Z:"), py))
-        py = py + 0.36
         table.insert(fs, string.format("field[0.20,%.2f;3.5,0.62;strip_p1x;;%s]", py, fe(data.n_st_p1x or "")))
         table.insert(fs, string.format("field[3.90,%.2f;3.5,0.62;strip_p1y;;%s]", py, fe(data.n_st_p1y or "")))
         table.insert(fs, string.format("field[7.60,%.2f;3.5,0.62;strip_p1z;;%s]", py, fe(data.n_st_p1z or "")))
+        py = py + 0.40
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#4488CC", S("End 2 — X / Y / Z:")), py))
         py = py + 0.80
-        table.insert(fs, string.format("label[0.20,%.2f;%s]", py, S("End 2 — X / Y / Z:"), py))
-        py = py + 0.36
         table.insert(fs, string.format("field[0.20,%.2f;3.5,0.62;strip_p2x;;%s]", py, fe(data.n_st_p2x or "")))
         table.insert(fs, string.format("field[3.90,%.2f;3.5,0.62;strip_p2y;;%s]", py, fe(data.n_st_p2y or "")))
         table.insert(fs, string.format("field[7.60,%.2f;3.5,0.62;strip_p2z;;%s]", py, fe(data.n_st_p2z or "")))
-        py = py + 0.80
+        py = py + 0.40
         table.insert(fs, string.format("label[0.20,%.2f;%s]", py,
             clr("#888888", S("Visible on radar in orange. No dedicated ATC."))))
-        py = py + 0.42
+        py = py + 0.80
         table.insert(fs, string.format("button[0.20,%.2f;4.5,0.62;strip_create;" .. fe(S("✔ Create runway")) .. "]", py))
         if data.n_st_err then
             table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.74, clr("#FF4444", data.n_st_err)))

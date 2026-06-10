@@ -135,6 +135,7 @@ New runway — [@1] @2=Новая полоса — [@1] @2
 Independent runways=Независимые полосы
 Visible on radar in orange. No dedicated ATC.=Видна на радаре оранжевым. Без выделенного УВД.
 New independent runway=Новая независимая полоса
+Strip name (e.g. North-Field):=Название полосы (напр. Северное-Поле):
 
 ### Запросы УВД ###
 ago @1=@1 назад
@@ -228,3 +229,14 @@ Independent runways (no ATC)=Независимые полосы (без УВД)
 No independent runway.=Нет независимых полос.
 No runway.=Нет полос.
 New independent runway=Новая независимая полоса
+
+P1/P2=П1/П2
+Pilot name:=Имя пилота:
+Send ▶=Отправить ▶
+Position=Позиция
+Distance=Расстояние
+Runways=Полосы
+App=Зах.
+← linked=← связан
+← controlled=← контролируется
+[ATC] Nearest independent runway: @1 — @2m — @3=[УВД] Ближайшая независимая полоса: @1 — @2 м — @3
