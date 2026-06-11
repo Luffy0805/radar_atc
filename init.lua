@@ -17,7 +17,7 @@ dofile(minetest.get_modpath("radar_atc") .. "/config.lua")
 --  Allows admin access without password,
 --  and to view/modify passwords from the interface.
 -- =============================================================
-minetest.register_privilege("atc", {
+minetest.register_privilege("radar_atc", {
     description = "ATC access: radar admin without password, password management",
     give_to_singleplayer = false,
 })
