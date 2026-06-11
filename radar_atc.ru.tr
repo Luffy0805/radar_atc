@@ -1,0 +1,242 @@
+# textdomain: radar_atc
+
+### Application ###
+Air Traffic Control Radar=Радар управления воздушным движением
+Air Surveillance=Воздушное наблюдение
+ATC access: radar admin without password, password management=Доступ УВД: администрирование радара без пароля, управление паролями
+Radar=Радар
+Airports=Аэропорты
+ATC=УВД
+Admin=Администратор
+
+### Radar tab ###
+Range:=Дальность:
+Outside airport=За пределами аэропорта
+⊕ Remote: @1=⊕ Удалённо: @1
+Select an aircraft below=Выберите воздушное судно ниже
+No airport. Use the Admin tab.=Нет аэропорта. Используйте вкладку «Администратор».
+⚠ Transponder required above @1m=⚠ Транспондер обязателен выше @1 м
+Model   : @1=Модель   : @1
+Owner   : @1=Владелец : @1
+Pilot   : @1=Пилот    : @1
+Heading : @1° @2=Курс     : @1° @2
+Speed   : @1=Скорость : @1
+Throttle: @1%=Газ      : @1 %
+HP      : @1=ОЗ       : @1
+Fuel    : @1=Топливо  : @1
+Altitude: @1 @2=Высота   : @1 @2
+Distance: @1m=Расстояние: @1 м
+Range   : @1=Дальность: @1
+Range   : engine off=Дальность: двигатель выключен
+Fuel    : @1L / @2L=Топливо: @1 л / @2 л
+Range   : @1m / @2 min=Дальность: @1 м / @2 мин
+(stopped)=(на земле)
+ (stopped)= (на земле)
+@1 contact=@1 контакт
+@1 contacts=@1 контактов
+
+### Airports tab ###
+Airport:=Аэропорт:
+Independent runways (no ATC) — nearest first=Независимые полосы (без УВД) — ближайшие первыми
+Name=Название
+Length=Длина
+Width=Ширина
+Approach coordinates by direction=Координаты захода по направлению
+Desig.=Обозн.
+Runway=Полоса
+@1 runway=@1 полоса
+@1 runways=@1 полосы
+No runway registered.=Нет зарегистрированных полос.
+ ← linked= ← связан
+ ← controlled= ← контролируется
+⟵ Return to linked airport=⟵ Вернуться к связанному аэропорту
+⟵ Return to this linked airport=⟵ Вернуться к этому связанному аэропорту
+This computer controls its home airport.=Этот компьютер управляет своим домашним аэропортом.
+📡 Link antenna active=📡 Антенна связи активна
+Connection authorized without password.=Подключение разрешено без пароля.
+⊕ Take control=⊕ Взять управление
+⊕ Take control of [@1]=⊕ Взять управление [@1]
+Password required — =Требуется пароль — 
+Password=Пароль
+Confirm=Подтвердить
+Cancel=Отмена
+◀ Prev.=◀ Пред.
+Next ▶=След. ▶
+(not linked to an airport)=(не связан с аэропортом)
+
+### ATC tab ###
+ATC — @1=УВД — @1
+Requests=Запросы
+Radio=Радио
+NOTAM=НОТАМ
+Log=Журнал
+Landing=Посадка
+Takeoff=Взлёт
+Flyover=Пролёт
+Approach=Заход
+Page @1 / @2  (@3 requests)=Стр. @1 / @2  (@3 запросов)
+✔ Authorized=✔ Разрешено
+✕ Refuse=✕ Отказать
+⏸ On hold=⏸ Ожидание
+⏸ Hold=⏸ Ожидать
+✕ Delete=✕ Удалить
+← Select or create a conversation=← Выбрать или создать разговор
+⚡ Radio — @1=⚡ Радио — @1
+✕ Close=✕ Закрыть
+NOTAM — Pilot notices=НОТАМ — Уведомления пилотам
+No linked airport.=Нет связанного аэропорта.
+No decision recorded.=Нет записанных решений.
+Latest ATC decisions=Последние решения УВД
+Send=Отправить
+Your message...=Ваше сообщение...
+Add NOTAM line...=Добавить строку НОТАМ...
++ Add=+ Добавить
+
+### Admin tab ###
+Administration — Password required=Администрирование — Требуется пароль
+Unlock=Разблокировать
+⚠ Default password — remember to change it (atc priv)=⚠ Пароль по умолчанию — не забудьте его сменить (atc priv)
+🔑 Password management=🔑 Управление паролями
+Admin password:  @1=Пароль администратора:  @1
+New admin password=Новый пароль администратора
+Remote password: @1=Пароль удалённого доступа: @1
+New remote password=Новый пароль удалённого доступа
+✔ Save=✔ Сохранить
+✔ Admin password updated.=✔ Пароль администратора обновлён.
+✗ Empty password ignored.=✗ Пустой пароль проигнорирован.
+✔ Remote password updated.=✔ Пароль удалённого доступа обновлён.
+Registered airports=Зарегистрированные аэропорты
++ New airport=+ Новый аэропорт
+Independent runways →=Независимые полосы →
+🔑 Passwords=🔑 Пароли
+Page @1 / @2  (@3 airports)=Стр. @1 / @2  (@3 аэропортов)
+No airport.=Нет аэропорта.
+Runways →=Полосы →
+✕ Delete.=✕ Удалить
+Create airport=Создать аэропорт
+← Back=← Назад
+ICAO identifier (max 6 chars e.g. LFPG):=Код ИКАО (макс. 6 сим., напр. UUEE):
+Full airport name:=Полное название аэропорта:
+Center position X/Y/Z (empty \= computer position):=Центральная позиция X/Y/Z (пусто \= позиция компьютера):
+✔ Create airport=✔ Создать аэропорт
+ID '@1' already used.=Идентификатор «@1» уже используется.
+Runways — [@1] @2=Полосы — [@1] @2
++ New runway=+ Новая полоса
+Optional suffix (L, R, C or empty):=Необязательный суффикс (L, R, C или пусто):
+Width (m):=Ширина (м):
+End 1 — X / Y / Z:=Конец 1 — X / Y / Z:
+End 2 — X / Y / Z:=Конец 2 — X / Y / Z:
+Optional approach coordinates (X,Z):=Координаты захода (необязательно) (X,Z):
+Runway @1 (X,Z):=Полоса @1 (X,Z):
+Number calculated automatically from coordinates.=Номер рассчитывается автоматически по координатам.
+✔ Create runway=✔ Создать полосу
+All coordinates are required.=Все координаты обязательны.
+New runway — [@1] @2=Новая полоса — [@1] @2
+Independent runways=Независимые полосы
+Visible on radar in orange. No dedicated ATC.=Видна на радаре оранжевым. Без выделенного УВД.
+New independent runway=Новая независимая полоса
+Strip name (e.g. North-Field):=Название полосы (напр. Северное-Поле):
+
+### Запросы УВД ###
+ago @1=@1 назад
+Lnd.=Пос.
+Tkf.=Взлёт
+⊕ App.=⊕ Зах.
+Alt.(m):=Высота (м):
+Set=Задать
+landing request=запрос на посадку
+takeoff request=запрос на взлёт
+flyover at @1=пролёт на @1
+approach request=запрос на заход
+sent=отправлен
+(no active tower)=(нет активной вышки)
+
+UPD: =ОБН: 
+
+ASR Radar Antenna=Радарная антенна ASR
+ATC Link Antenna=Антенна связи УВД
+Allows connection to any airport without password\nfrom a radar within @1 blocks.=Позволяет подключаться к любому аэропорту без пароля\nс радара в радиусе @1 блоков.
+ATC Communication Module\n(Component — not placeable)=Коммуникационный модуль УВД\n(Компонент — нельзя размещать)
+Reception Dish\n(Component — not placeable)=Приёмная тарелка\n(Компонент — нельзя размещать)
+Microwave Waveguide\n(Component — not placeable)=Микроволновый волновод\n(Компонент — нельзя размещать)
+Radar Magnetron\n(Component — not placeable)=Радарный магнетрон\n(Компонент — нельзя размещать)
+Azimuth Rotator Motor\n(Component — not placeable)=Азимутальный мотор вращения\n(Компонент — нельзя размещать)
+
+### Commands ###
+[ATC] Nearest: [@1] @2 — @3m — @4=[УВД] Ближайший: [@1] @2 — @3 м — @4
+[ATC] Nearest: [@1] @2 — @3m=[УВД] Ближайший: [@1] @2 — @3 м
+[ATC] No airport registered.=[УВД] Нет зарегистрированных аэропортов.
+[ATC] You must be on board an aircraft.=[УВД] Вы должны находиться на борту воздушного судна.
+[ATC @1] Radio message sent.=[УВД @1] Радиосообщение отправлено.
+Specify altitude: /atc @1 flyover 500=Укажите высоту: /atc @1 flyover 500
+[ATC] Request already sent, please wait.=[УВД] Запрос уже отправлен, ожидайте.
+[ATC @1] @2 request sent=[УВД @1] Запрос @2 отправлен
+[ATC @1] @2 request sent (no active tower).=[УВД @1] Запрос @2 отправлен (нет активной вышки).
+[NOTAM] No airport registered.=[НОТАМ] Нет зарегистрированных аэропортов.
+[NOTAM] Airport '@1' unknown.=[НОТАМ] Аэропорт «@1» неизвестен.
+NOTAM header @1 @2=[ НОТАМ @1 ] @2
+No active NOTAM.=Нет активных НОТАМ.
+
+### ATC decisions ###
+Wrong password.=Неверный пароль.
+Incorrect password.=Неверный пароль.
+Request already in progress (retry in @1s)=Запрос уже обрабатывается (повторите через @1 с)
+Authorized=Разрешено
+Refused=Отказано
+On hold=Ожидание
+Hold your position.=Сохраняйте позицию.
+Contact tower.=Свяжитесь с вышкой.
+Runway=Полоса
+Landing authorized — Runway @1=Посадка разрешена — Полоса @1
+Takeoff authorized — Runway @1=Взлёт разрешён — Полоса @1
+Contact tower on approach.=Свяжитесь с вышкой на заходе.
+@1 Approach runway @2: heading @3 (@4°), approach coords @5.=@1 Заход на полосу @2: курс @3 (@4°), координаты захода @5.
+@1 Approach runway @2: no approach programmed, refer to runway coordinates (@3).=@1 Заход на полосу @2: схема захода не запрограммирована, используйте координаты полосы (@3).
+@1 Flyover authorized at @2m (@3ft)=@1 Пролёт разрешён на высоте @2 м (@3 фут)
+@1 Authorized=@1 Разрешено
+@1 Refused — Contact tower.=@1 Отказано — Свяжитесь с вышкой.
+@1 On hold — Hold your position.=@1 Ожидание — Сохраняйте позицию.
+(Reply: /atc @1 msg <text>)=(Ответить: /atc @1 msg <текст>)
+
+### Directions ###
+north=север
+north-northeast=северо-северо-восток
+northeast=северо-восток
+east-northeast=восток-северо-восток
+east=восток
+east-southeast=восток-юго-восток
+southeast=юго-восток
+south-southeast=юго-юго-восток
+south=юг
+south-southwest=юго-юго-запад
+southwest=юго-запад
+west-southwest=запад-юго-запад
+west=запад
+west-northwest=запад-северо-запад
+northwest=северо-запад
+north-northwest=северо-северо-запад
+
+### Radio tab ###
+Discussions=Переговоры
++ Contact pilot=+ Связаться с пилотом
+Open conversation=Открыть разговор
+No pending request.=Нет ожидающих запросов.
+No active NOTAM.=Нет активных НОТАМ.
++ Add=+ Добавить
+Runways →=Полосы →
+Independent runways (no ATC)=Независимые полосы (без УВД)
+↳ Independent runways=↳ Независимые полосы
+No independent runway.=Нет независимых полос.
+No runway.=Нет полос.
+New independent runway=Новая независимая полоса
+
+P1/P2=П1/П2
+Pilot name:=Имя пилота:
+Send ▶=Отправить ▶
+Position=Позиция
+Distance=Расстояние
+Runways=Полосы
+App=Зах.
+← linked=← связан
+← controlled=← контролируется
+[ATC] Nearest independent runway: @1 — @2m — @3=[УВД] Ближайшая независимая полоса: @1 — @2 м — @3
