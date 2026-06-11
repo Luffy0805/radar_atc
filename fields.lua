@@ -112,7 +112,7 @@ function do_fields(app, mtos, sender, fields)
             local has_link = link_antenna_ok(mtos.pos)
             local has_pw   = (fields.ctrl_pw == CFG.radar_password_remote)
             -- Seuls le mot de passe correct ou une antenne de liaison autorisent
-            -- (le priv atc ne bypass PAS le mot de passe remote)
+            -- (le priv radar_atc ne bypass PAS le mot de passe remote)
             if has_pw or has_link then
                 local ap = find_ap(view)
                 if ap and ap.pos then
@@ -187,9 +187,9 @@ function do_fields(app, mtos, sender, fields)
         data._admin_ok = data._admin_ok or {}
         if not data._admin_ok[_cur_pname] then return true end
 
-        -- Password change (reserved for players with atc priv)
+        -- Password change (reserved for players with radar_atc priv)
         local pname_admin = data._player_name or ""
-        if minetest.check_player_privs(pname_admin, {atc=true}) then
+        if minetest.check_player_privs(pname_admin, {radar_atc=true}) then
             if fields.save_pw_admin and fields.new_pw_admin then
                 local pw = fields.new_pw_admin:match("^%s*(.-)%s*$")
                 if pw ~= "" then

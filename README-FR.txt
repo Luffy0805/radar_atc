@@ -67,7 +67,7 @@ Liste tous les aéroports enregistrés et permet de **prendre le contrôle** d'u
 - `← associé` : l'ordinateur est lié à cet aéroport
 - `← contrôlé` : l'ordinateur contrôle cet aéroport à distance
 
-**Pistes indépendantes :** liste des pistes sans aéroport ATC associé, visibles par tous les pilotes.
+**Pistes indépendantes :** liste des pistes sans tour ATC associée, visibles par tous les pilotes.
 
 ---
 
@@ -106,7 +106,7 @@ Accès protégé par mot de passe (par défaut : `admin`).
 - Ajouter/supprimer des pistes (désignation automatique, largeur, coordonnées d'approche)
 - Supprimer un aéroport
 
-**Gestion des mots de passe** *(priv `atc` requis)* :
+**Gestion des mots de passe** *(priv `radar_atc` requis)* :
 - Modifier les mots de passe admin et distant
 - Les mots de passe sont persistants (survivent aux redémarrages)
 
@@ -164,18 +164,36 @@ Permet de prendre le contrôle de n'importe quel aéroport sans mot de passe.
 
 | Commande | Description |
 |----------|-------------|
-| `/atc airport` | Affiche l'aéroport le plus proche avec distance, direction et **coordonnées centrales** |
-| `/atc navigate [ID]` | Informations de navigation : position, pistes, caps, coordonnées d'approche, NOTAM |
+| `/atc airport` | Affiche l'**aéroport enregistré** et la **piste indépendante** les plus proches, avec distance, direction et coordonnées |
+| `/atc navigate [ID]` | Informations de navigation complètes d'un aéroport : position, pistes, caps, coordonnées d'approche, NOTAM. Sans ID : aéroport le plus proche. |
+| `/atc navigate IR` | Liste numérotée des **10 pistes indépendantes les plus proches** (nom + distance) |
+| `/atc navigate IR <n>` | Détails complets de la piste indépendante numéro `<n>` (triée par distance courante) |
+| `/atc navigate RIR` | Liste mixte numérotée des **10 emplacements les plus proches** (aéroports `[AP]` et pistes indépendantes `[IR]` confondus) |
 | `/atc <ID> landing` | Demande d'autorisation d'atterrissage |
 | `/atc <ID> takeoff` | Demande d'autorisation de décollage |
 | `/atc <ID> flyover <alt_m>` | Demande de survol à l'altitude indiquée (mètres) |
 | `/atc <ID> approach` | Demande d'instructions d'approche |
 | `/atc <ID> msg <texte>` | Message radio libre vers la tour |
 
+### Pistes indépendantes (IR — Independent Runway)
+
+Les pistes indépendantes sont des pistes d'atterrissage sans tour ATC associée.
+
+```
+/atc navigate IR          → liste numérotée des 10 IR les plus proches (nom + distance)
+/atc navigate IR 3        → détails de la piste n°3 (nom, coordonnées, cap, longueur)
+/atc navigate RIR         → liste mixte : aéroports [AP] et IR [IR] par distance
+```
+
+`/atc navigate IR <n>` trie **toujours par distance courante** — pas besoin d'avoir affiché la liste au préalable.
+
 **Exemples :**
 ```
 /atc airport
 /atc navigate LFPG
+/atc navigate IR
+/atc navigate IR 2
+/atc navigate RIR
 /atc LFPG landing
 /atc LFPG flyover 500
 /atc LFPG msg En finale piste 27
@@ -189,10 +207,10 @@ Consulte les NOTAM d'un aéroport.
 
 ---
 
-## Privilège `atc`
+## Privilège `radar_atc`
 
 ```
-/grant <joueur> atc
+/grant <joueur> radar_atc
 ```
 
 Permet de modifier les mots de passe depuis l'interface Admin.

@@ -53,6 +53,8 @@ Badges:
 - `← linked`: this computer is linked to this airport
 - `← controlled`: this computer controls this airport remotely
 
+Independent runways (no ATC tower) are also listed in this tab.
+
 ---
 
 ### 📡 ATC
@@ -68,7 +70,7 @@ Badges:
 
 Password-protected (default: `admin`). Form labels are **coloured in dark blue** for readability.
 
-Manage airports, runways and passwords (`atc` privilege required for password changes).
+Manage airports, runways and passwords (`radar_atc` privilege required for password changes).
 
 ---
 
@@ -102,8 +104,11 @@ All commands except `airport` and `navigate` **require being on board an aircraf
 
 | Command | Description |
 |---------|-------------|
-| `/atc airport` | Nearest airport: ID, name, distance, direction, **central coordinates** |
-| `/atc navigate [ID]` | Full navigation info: position, runways, headings, approach coords, NOTAMs |
+| `/atc airport` | Nearest registered airport **and** nearest independent runway, with distance, direction and coordinates |
+| `/atc navigate [ID]` | Full navigation info for an airport: position, runways, headings, approach coords, NOTAMs. If no ID given, uses nearest airport. |
+| `/atc navigate IR` | Numbered list of the **10 nearest independent runways** (name + distance) |
+| `/atc navigate IR <n>` | Full details for independent runway number `<n>` from the nearest-first ordering |
+| `/atc navigate RIR` | Mixed numbered list of the **10 nearest locations** (airports and independent runways combined) |
 | `/atc <ID> landing` | Request landing clearance |
 | `/atc <ID> takeoff` | Request takeoff clearance |
 | `/atc <ID> flyover <alt_m>` | Request flyover at given altitude (metres) |
@@ -111,12 +116,24 @@ All commands except `airport` and `navigate` **require being on board an aircraf
 | `/atc <ID> msg <text>` | Free radio message to the tower |
 | `/notam <ID\|nearest>` | Consult NOTAMs for an airport |
 
----
+### Independent Runways (IR)
 
-## `atc` privilege
+Independent runways are landing strips without an associated ATC tower.
 
 ```
-/grant <player> atc
+/atc navigate IR          → numbered list of 10 nearest IR (name + distance)
+/atc navigate IR 3        → full details of runway #3 (name, coords, heading, length)
+/atc navigate RIR         → mixed list: airports [AP] and IR [IR] by distance
+```
+
+`/atc navigate IR <n>` always sorts by current distance, so it works at any time — no need to call the list first.
+
+---
+
+## `radar_atc` privilege
+
+```
+/grant <player> radar_atc
 ```
 
 Grants access to the password management panel in the Admin tab.

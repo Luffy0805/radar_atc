@@ -1073,16 +1073,16 @@ function tab_admin(data, mtos)
         -- Security reminder if default passwords
         if CFG.radar_password_admin == "admin" then
             table.insert(fs, string.format("label[0.30,%.2f;%s]", py + 2.65,
-                clr("#FF8800", S("⚠ Default password — remember to change it (atc priv)"))))
+                clr("#FF8800", S("⚠ Default password — remember to change it (radar_atc priv)"))))
         end
         return table.concat(fs)
     end
 
     local view    = data.av or "list"
     local pname_ui  = data._player_name or ""
-    local is_atc_ui = minetest.check_player_privs(pname_ui, {atc=true})
+    local is_atc_ui = minetest.check_player_privs(pname_ui, {radar_atc=true})
 
-    -- ---- PASSWORD MANAGEMENT VIEW (atc priv only) ----
+    -- ---- PASSWORD MANAGEMENT VIEW (radar_atc priv only) ----
     if view == "pw_manage" then
         table.insert(fs, string.format("box[0,%.2f;%.2f,0.46;#1a0033]", py, CFG.X_MAX))
         table.insert(fs, string.format("label[0.20,%.2f;%s]", py + 0.03,

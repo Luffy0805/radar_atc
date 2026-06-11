@@ -240,3 +240,27 @@ App=Avv.
 ← linked=← collegato
 ← controlled=← controllato
 [ATC] Nearest independent runway: @1 — @2m — @3=[ATC] Pista indipendente più vicina: @1 — @2 m — @3
+
+Player not found.=Giocatore non trovato.
+[ATC] No independent runway registered.=[ATC] Nessuna pista indipendente registrata.
+[ATC] IR number out of range. Use 1 to @1.=[ATC] Numero fuori intervallo. Usare da 1 a @1.
+[ATC] Independent runways — @1 nearest:=[ATC] Piste indipendenti — @1 più vicine:
+  Use /atc navigate IR <n> for full details.=  Usare /atc navigate IR <n> per i dettagli completi.
+[ATC] No airport or independent runway registered.=[ATC] Nessun aeroporto o pista indipendente registrata.
+[ATC] Nearest airports and runways — @1 results:=[ATC] Aeroporti e piste più vicini — @1 risultati:
+  [AP] = registered airport  |  [IR] = independent runway=  [AP] = aeroporto registrato  |  [IR] = pista indipendente
+Usage: /atc <ID|airport|navigate> <action> [param]=Uso: /atc <ID|airport|navigate> <azione> [param]
+[ATC] Airport '@1' unknown. Try /atc airport=[ATC] Aeroporto «@1» sconosciuto. Provare /atc airport
+Usage: /atc @1 msg <text>=Uso: /atc @1 msg <testo>
+Invalid action. Valid: landing, takeoff, flyover, approach, msg=Azione non valida. Valide: landing, takeoff, flyover, approach, msg
+Usage: /notam <airport_ID> or /notam nearest=Uso: /notam <ID_aeroporto> o /notam nearest
+Length=Lunghezza
+Width=Larghezza
+Heading=Rotta
+Note=Nota
+⚠ Default password — remember to change it (radar_atc priv)=⚠ Password predefinita — ricordarsi di cambiarla (priv radar_atc)
+[ATC] Airport '@1' unknown.=[ATC] Aeroporto \xc2\xab@1\xc2\xbb sconosciuto.
+
+### Commands — descriptions ###
+ATC tower communication.\n  /atc airport -- nearest registered airport and independent runway\n  /atc navigate [ID] -- navigation info for an airport (runways, headings, coords)\n  /atc navigate IR -- list the 10 nearest independent runways (numbered)\n  /atc navigate IR <n> -- full details for independent runway number <n>\n  /atc navigate RIR -- mixed list: airports and independent runways (10 nearest)\n  /atc <ID> landing -- request landing clearance\n  /atc <ID> takeoff -- request takeoff clearance\n  /atc <ID> flyover <alt_m> -- request flyover at given altitude (metres)\n  /atc <ID> approach -- request approach instructions\n  /atc <ID> msg <text> -- free radio message to the tower\n  All commands except airport and navigate require being on board an aircraft.=Comunicazione con la torre ATC.\n  /atc airport — aeroporto registrato e pista indipendente più vicini\n  /atc navigate [ID] — informazioni di navigazione di un aeroporto (piste, rotte, coordinate)\n  /atc navigate IR — elenca le 10 piste indipendenti più vicine (numerate)\n  /atc navigate IR <n> — dettagli della pista indipendente numero <n>\n  /atc navigate RIR — lista mista: aeroporti e piste indipendenti (10 più vicine)\n  /atc <ID> landing — richiesta di atterraggio\n  /atc <ID> takeoff — richiesta di decollo\n  /atc <ID> flyover <alt_m> — richiesta di sorvolo all\'altitudine indicata (metri)\n  /atc <ID> approach — richiesta di istruzioni di avvicinamento\n  /atc <ID> msg <testo> — messaggio radio libero alla torre\n  Eccetto airport e navigate: richiede di essere a bordo di un aeromobile.
+Consult pilot notices (NOTAM) for an airport.\n  /notam <ID> -- shows NOTAM for the airport\n  /notam nearest -- shows NOTAM for the nearest airport=Consultare i NOTAM di un aeroporto.\n  /notam <ID> — mostra i NOTAM dell\'aeroporto\n  /notam nearest — mostra i NOTAM dell\'aeroporto più vicino
