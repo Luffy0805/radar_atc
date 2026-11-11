@@ -1,7 +1,6 @@
 # textdomain: radar_atc
 
 ### Application ###
-Air Traffic Control Radar=Flugsicherungsradar
 Air Surveillance=Luftraumüberwachung
 ATC access: radar admin without password, password management=ATC-Zugang: Radar-Admin ohne Passwort, Passwortverwaltung
 Radar=Radar
@@ -22,37 +21,26 @@ Pilot   : @1=Pilot    : @1
 Heading : @1° @2=Kurs     : @1° @2
 Speed   : @1=Geschw.  : @1
 Throttle: @1%=Gas      : @1 %
-HP      : @1=LP       : @1
 Fuel    : @1=Kraftstoff: @1
 Altitude: @1 @2=Höhe     : @1 @2
 Distance: @1m=Entfernung: @1 m
 Range   : @1=Reichweite: @1
 Range   : engine off=Reichweite: Motor aus
-Fuel    : @1L / @2L=Kraftstoff: @1 L / @2 L
-Range   : @1m / @2 min=Reichweite: @1 m / @2 min
-(stopped)=(am Boden)
  (stopped)= (am Boden)
-@1 contact=@1 Kontakt
-@1 contacts=@1 Kontakte
 
 ### Airports tab ###
 Airport:=Flughafen:
 Independent runways (no ATC) — nearest first=Unabhängige Pisten (kein ATC) — nächste zuerst
 Name=Name
-Length=Länge
-Width=Breite
 Approach coordinates by direction=Anflugkoordinaten nach Richtung
 Desig.=Bezeichn.
-Runway=Piste
 @1 runway=@1 Piste
-@1 runways=@1 Pisten
 No runway registered.=Keine Piste eingetragen.
  ← linked= ← verknüpft
  ← controlled= ← kontrolliert
 ⟵ Return to linked airport=⟵ Zum verknüpften Flughafen zurück
 ⟵ Return to this linked airport=⟵ Zu diesem verknüpften Flughafen zurück
 This computer controls its home airport.=Dieser Computer kontrolliert seinen Heimatflughafen.
-📡 Link antenna active=📡 Verbindungsantenne aktiv
 Connection authorized without password.=Verbindung ohne Passwort autorisiert.
 ⊕ Take control=⊕ Kontrolle übernehmen
 ⊕ Take control of [@1]=⊕ Kontrolle über [@1] übernehmen
@@ -87,19 +75,12 @@ NOTAM — Pilot notices=NOTAM — Pilotenhinweise
 No linked airport.=Kein verknüpfter Flughafen.
 No decision recorded.=Keine Entscheidung protokolliert.
 Latest ATC decisions=Letzte ATC-Entscheidungen
-Send=Senden
-Your message...=Ihre Nachricht...
-Add NOTAM line...=NOTAM-Zeile hinzufügen...
-+ Add=+ Hinzufügen
 
 ### Admin tab ###
 Administration — Password required=Verwaltung — Passwort erforderlich
 Unlock=Entsperren
-⚠ Default password — remember to change it (atc priv)=⚠ Standardpasswort — bitte ändern (atc priv)
 🔑 Password management=🔑 Passwortverwaltung
-Admin password:  @1=Admin-Passwort:  @1
 New admin password=Neues Admin-Passwort
-Remote password: @1=Fernzugriff-Passwort: @1
 New remote password=Neues Fernzugriff-Passwort
 ✔ Save=✔ Speichern
 ✔ Admin password updated.=✔ Admin-Passwort aktualisiert.
@@ -111,13 +92,11 @@ Independent runways →=Unabhängige Pisten →
 🔑 Passwords=🔑 Passwörter
 Page @1 / @2  (@3 airports)=Seite @1 / @2  (@3 Flughäfen)
 No airport.=Kein Flughafen.
-Runways →=Pisten →
-✕ Delete.=✕ Löschen
 Create airport=Flughafen erstellen
 ← Back=← Zurück
 ICAO identifier (max 6 chars e.g. LFPG):=ICAO-Kennung (max. 6 Zeichen, z.B. EDDF):
 Full airport name:=Vollständiger Flughafenname:
-Center position X/Y/Z (empty \= computer position):=Mittelposition X/Y/Z (leer \= Computerposition):
+Center position X/Y/Z (empty @= computer position):=Mittelposition X/Y/Z (leer @= Computerposition):
 ✔ Create airport=✔ Flughafen erstellen
 ID '@1' already used.=Kennung „@1" bereits vergeben.
 Runways — [@1] @2=Pisten — [@1] @2
@@ -132,9 +111,7 @@ Number calculated automatically from coordinates.=Nummer wird automatisch aus de
 ✔ Create runway=✔ Piste erstellen
 All coordinates are required.=Alle Koordinaten sind erforderlich.
 New runway — [@1] @2=Neue Piste — [@1] @2
-Independent runways=Unabhängige Pisten
 Visible on radar in orange. No dedicated ATC.=Auf dem Radar orange sichtbar. Kein dedizierter ATC.
-New independent runway=Neue unabhängige Piste
 Strip name (e.g. North-Field):=Pistenname (z.B. Nord-Feld):
 
 ### Demandes ATC — interface et commandes ###
@@ -155,12 +132,12 @@ UPD: =AKT:
 
 ASR Radar Antenna=ASR-Radarantenne
 ATC Link Antenna=ATC-Verbindungsantenne
-Allows connection to any airport without password\nfrom a radar within @1 blocks.=Ermöglicht die Verbindung zu jedem Flughafen ohne Passwort\nvon einem Radar innerhalb von @1 Blöcken.
-ATC Communication Module\n(Component — not placeable)=ATC-Kommunikationsmodul\n(Komponente — nicht platzierbar)
-Reception Dish\n(Component — not placeable)=Empfangsschüssel\n(Komponente — nicht platzierbar)
-Microwave Waveguide\n(Component — not placeable)=Mikrowellen-Hohlleiter\n(Komponente — nicht platzierbar)
-Radar Magnetron\n(Component — not placeable)=Radar-Magnetron\n(Komponente — nicht platzierbar)
-Azimuth Rotator Motor\n(Component — not placeable)=Azimut-Rotationsmotor\n(Komponente — nicht platzierbar)
+Allows connection to any airport without password@nfrom a radar within @1 blocks.=Ermöglicht die Verbindung zu jedem Flughafen ohne Passwort@nvon einem Radar innerhalb von @1 Blöcken.
+ATC Communication Module@n(Component — not placeable)=ATC-Kommunikationsmodul@n(Komponente — nicht platzierbar)
+Reception Dish@n(Component — not placeable)=Empfangsschüssel@n(Komponente — nicht platzierbar)
+Microwave Waveguide@n(Component — not placeable)=Mikrowellen-Hohlleiter@n(Komponente — nicht platzierbar)
+Radar Magnetron@n(Component — not placeable)=Radar-Magnetron@n(Komponente — nicht platzierbar)
+Azimuth Rotator Motor@n(Component — not placeable)=Azimut-Rotationsmotor@n(Komponente — nicht platzierbar)
 
 ### Commands ###
 [ATC] Nearest: [@1] @2 — @3m — @4=[ATC] Nächster: [@1] @2 — @3 m — @4
@@ -170,16 +147,12 @@ Azimuth Rotator Motor\n(Component — not placeable)=Azimut-Rotationsmotor\n(Kom
 [ATC @1] Radio message sent.=[ATC @1] Funknachricht gesendet.
 Specify altitude: /atc @1 flyover 500=Höhe angeben: /atc @1 flyover 500
 [ATC] Request already sent, please wait.=[ATC] Anfrage bereits gesendet, bitte warten.
-[ATC @1] @2 request sent=[ATC @1] @2-Anfrage gesendet
-[ATC @1] @2 request sent (no active tower).=[ATC @1] @2-Anfrage gesendet (kein aktiver Tower).
 [NOTAM] No airport registered.=[NOTAM] Kein Flughafen registriert.
 [NOTAM] Airport '@1' unknown.=[NOTAM] Flughafen „@1" unbekannt.
 NOTAM header @1 @2=[ NOTAM @1 ] @2
-No active NOTAM.=Kein aktives NOTAM.
 
 ### ATC decisions and messages ###
 Wrong password.=Falsches Passwort.
-Incorrect password.=Falsches Passwort.
 Request already in progress (retry in @1s)=Anfrage läuft bereits (erneuter Versuch in @1 s)
 Authorized=Genehmigt
 Refused=Abgelehnt
@@ -193,10 +166,6 @@ Contact tower on approach.=Tower beim Anflug kontaktieren.
 @1 Approach runway @2: heading @3 (@4°), approach coords @5.=@1 Anflug Piste @2: Kurs @3 (@4°), Anflugkoordinaten @5.
 @1 Approach runway @2: no approach programmed, refer to runway coordinates (@3).=@1 Anflug Piste @2: kein Anflugkurs programmiert, Pistenkoordinaten beachten (@3).
 @1 Flyover authorized at @2m (@3ft)=@1 Überflug genehmigt auf @2 m (@3 ft)
-@1 Authorized=@1 Genehmigt
-@1 Refused — Contact tower.=@1 Abgelehnt — Tower kontaktieren.
-@1 On hold — Hold your position.=@1 Warteschleife — Position halten.
-(Reply: /atc @1 msg <text>)=(Antwort: /atc @1 msg <Text>)
 
 ### Directions ###
 north=Nord
@@ -237,8 +206,6 @@ Position=Position
 Distance=Entfernung
 Runways=Pisten
 App=Anfl.
-← linked=← verknüpft
-← controlled=← kontrolliert
 [ATC] Nearest independent runway: @1 — @2m — @3=[ATC] Nächste unabhängige Piste: @1 — @2 m — @3
 
 Player not found.=Spieler nicht gefunden.
@@ -248,7 +215,7 @@ Player not found.=Spieler nicht gefunden.
   Use /atc navigate IR <n> for full details.=  /atc navigate IR <n> für vollständige Details verwenden.
 [ATC] No airport or independent runway registered.=[ATC] Kein Flughafen oder unabhängige Landebahn registriert.
 [ATC] Nearest airports and runways — @1 results:=[ATC] Nächste Flughäfen und Landebahnen — @1 Ergebnisse:
-  [AP] = registered airport  |  [IR] = independent runway=  [AP] = registrierter Flughafen  |  [IR] = unabhängige Landebahn
+  [AP] @= registered airport  |  [IR] @= independent runway=  [AP] @= registrierter Flughafen  |  [IR] @= unabhängige Landebahn
 Usage: /atc <ID|airport|navigate> <action> [param]=Verwendung: /atc <ID|airport|navigate> <Aktion> [Parameter]
 [ATC] Airport '@1' unknown. Try /atc airport=[ATC] Flughafen „@1" unbekannt. Versuche /atc airport
 Usage: /atc @1 msg <text>=Verwendung: /atc @1 msg <Text>
@@ -262,5 +229,8 @@ Note=Notiz
 [ATC] Airport '@1' unknown.=[ATC] Flughafen "\u201e@1\u201c" unbekannt.
 
 ### Commands — descriptions ###
-ATC tower communication.\n  /atc airport -- nearest registered airport and independent runway\n  /atc navigate [ID] -- navigation info for an airport (runways, headings, coords)\n  /atc navigate IR -- list the 10 nearest independent runways (numbered)\n  /atc navigate IR <n> -- full details for independent runway number <n>\n  /atc navigate RIR -- mixed list: airports and independent runways (10 nearest)\n  /atc <ID> landing -- request landing clearance\n  /atc <ID> takeoff -- request takeoff clearance\n  /atc <ID> flyover <alt_m> -- request flyover at given altitude (metres)\n  /atc <ID> approach -- request approach instructions\n  /atc <ID> msg <text> -- free radio message to the tower\n  All commands except airport and navigate require being on board an aircraft.=ATC-Turm Kommunikation.\n  /atc airport — nächster Flughafen und unabhängige Landebahn\n  /atc navigate [ID] — Navigationsdaten eines Flughafens (Pisten, Kurse, Koordinaten)\n  /atc navigate IR — Liste der 10 nächsten unabhängigen Landebahnen (nummeriert)\n  /atc navigate IR <n> — Details zur unabhängigen Landebahn Nummer <n>\n  /atc navigate RIR — gemischte Liste: Flughäfen und unabhängige Pisten (10 nächste)\n  /atc <ID> landing — Landeanfrage\n  /atc <ID> takeoff — Startanfrage\n  /atc <ID> flyover <alt_m> — Überflug auf angegebener Höhe (Meter)\n  /atc <ID> approach — Anfluginfos anfragen\n  /atc <ID> msg <text> — freie Funknachricht an den Tower\n  Außer airport und navigate: Bordaufenthalt in Luftfahrzeug erforderlich.
-Consult pilot notices (NOTAM) for an airport.\n  /notam <ID> -- shows NOTAM for the airport\n  /notam nearest -- shows NOTAM for the nearest airport=NOTAM eines Flughafens einsehen.\n  /notam <ID> — zeigt NOTAM des Flughafens\n  /notam nearest — zeigt NOTAM des nächsten Flughafens
+ATC tower communication.@n  /atc airport -- nearest registered airport and independent runway@n  /atc navigate [ID] -- navigation info for an airport (runways, headings, coords)@n  /atc navigate IR -- list the 10 nearest independent runways (numbered)@n  /atc navigate IR <n> -- full details for independent runway number <n>@n  /atc navigate RIR -- mixed list: airports and independent runways (10 nearest)@n  /atc <ID> landing -- request landing clearance@n  /atc <ID> takeoff -- request takeoff clearance@n  /atc <ID> flyover <alt_m> -- request flyover at given altitude (metres)@n  /atc <ID> approach -- request approach instructions@n  /atc <ID> msg <text> -- free radio message to the tower@n  All commands except airport and navigate require being on board an aircraft.=ATC-Turm Kommunikation.@n  /atc airport — nächster Flughafen und unabhängige Landebahn@n  /atc navigate [ID] — Navigationsdaten eines Flughafens (Pisten, Kurse, Koordinaten)@n  /atc navigate IR — Liste der 10 nächsten unabhängigen Landebahnen (nummeriert)@n  /atc navigate IR <n> — Details zur unabhängigen Landebahn Nummer <n>@n  /atc navigate RIR — gemischte Liste: Flughäfen und unabhängige Pisten (10 nächste)@n  /atc <ID> landing — Landeanfrage@n  /atc <ID> takeoff — Startanfrage@n  /atc <ID> flyover <alt_m> — Überflug auf angegebener Höhe (Meter)@n  /atc <ID> approach — Anfluginfos anfragen@n  /atc <ID> msg <text> — freie Funknachricht an den Tower@n  Außer airport und navigate: Bordaufenthalt in Luftfahrzeug erforderlich.
+Consult pilot notices (NOTAM) for an airport.@n  /notam <ID> -- shows NOTAM for the airport@n  /notam nearest -- shows NOTAM for the nearest airport=NOTAM eines Flughafens einsehen.@n  /notam <ID> — zeigt NOTAM des Flughafens@n  /notam nearest — zeigt NOTAM des nächsten Flughafens
+Identifier required.=Kennung erforderlich.
+Name required.=Name erforderlich.
+Note for pilots (optional):=Notiz für Piloten (optional):

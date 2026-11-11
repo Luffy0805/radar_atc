@@ -47,7 +47,7 @@ table.insert(fs, string.format("button[%.2f,%.2f;2.7,0.44;atc_ref_%d;%s]",
 
 Pagination : page dans `data.<x>_page`, boutons `<x>_prev` / `<x>_next` traités dans fields.lua, page bornée au moment du dessin (modèle : `ap_prev` / `ap_next`).
 
-Menu déroulant : `fields.<nom>` contient le libellé de l'entrée choisie. Ne pas reconnaître une entrée à un morceau de son texte (traductions, accents : voir `myap_sel` dans fields.lua, qui cherche « Pistes independantes » sans accent) ; tester tout menu déroulant en jeu avec une autre langue que l'anglais.
+Menu déroulant : par défaut, `fields.<nom>` contient le libellé de l'entrée choisie, **traduit par le client** : il ne correspond pas au texte de `S()` côté serveur. Dès qu'une entrée est traduite, dessiner avec `mkdd(..., true)` (`index_event`) : `fields.<nom>` contient alors le numéro de l'entrée. Mémoriser au dessin la liste numéro → identifiant dans `data`, comme `data._myap_choices` pour `myap_sel`. `mkdd()` échappe les entrées. Tester tout menu déroulant en jeu avec une autre langue que l'anglais.
 
 ## État
 `data` (= `mtos.bdev:get_app_storage('ram', 'radar')`) appartient au laptop, pas au joueur : plusieurs joueurs peuvent le partager, et `data._player_name` est le dernier qui a cliqué. Un état propre à un joueur s'indexe par son nom (`data._admin_ok[nom]`). Après un redémarrage, `data` peut être vide : toujours prévoir une valeur par défaut.

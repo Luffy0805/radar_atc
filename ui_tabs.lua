@@ -428,7 +428,10 @@ function tab_myairport(data, mtos)
     for i, id in ipairs(ap_ids) do
         if id == viewing then viewing_disp = ap_display[i]; break end
     end
-    table.insert(fs, mkdd(2.40, py, 10.0, "myap_sel", ap_display, viewing_disp))
+    -- index → id, read back by fields.lua: the dropdown sends the index
+    -- (index_event), never the label, which the client translates
+    data._myap_choices = ap_ids
+    table.insert(fs, mkdd(2.40, py, 10.0, "myap_sel", ap_display, viewing_disp, true))
     py = py + 0.68
 
     -- If "Independent runways" is selected in the dropdown → show the runway list
@@ -1206,7 +1209,7 @@ function tab_admin(data, mtos)
         py = py + 0.80
         table.insert(fs, string.format("field[0.20,%.2f;10,0.64;ap_name;;%s]", py, fe(data.n_ap_name or "")))
         py = py + 0.40
-        table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#4488CC", S("Center position X/Y/Z (empty \\= computer position):")), py))
+        table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#4488CC", S("Center position X/Y/Z (empty = computer position):")), py))
         py = py + 0.80
         table.insert(fs, string.format("field[0.20,%.2f;3.5,0.64;ap_px;;%s]", py, fe(data.n_ap_x or "")))
         table.insert(fs, string.format("field[3.90,%.2f;3.5,0.64;ap_py;;%s]", py, fe(data.n_ap_y or "")))
@@ -1404,8 +1407,10 @@ function tab_admin(data, mtos)
         table.insert(fs, string.format("field[0.20,%.2f;6.0,0.62;strip_name;;%s]", py, fe(data.n_st_name or "")))
         py = py + 0.40
         table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#4488CC", S("Width (m):")), py))
+        table.insert(fs, string.format("label[3.90,%.2f;%s]", py, clr("#4488CC", S("Note for pilots (optional):"))))
         py = py + 0.80
         table.insert(fs, string.format("field[0.20,%.2f;3.0,0.62;strip_wid;;%s]", py, fe(data.n_st_wid or "30")))
+        table.insert(fs, string.format("field[3.90,%.2f;10.70,0.62;strip_note;;%s]", py, fe(data.n_st_note or "")))
         py = py + 0.40
         table.insert(fs, string.format("label[0.20,%.2f;%s]", py, clr("#4488CC", S("End 1 — X / Y / Z:")), py))
         py = py + 0.80

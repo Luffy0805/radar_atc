@@ -25,11 +25,11 @@ Forme typique :
 | erreur dans `scan()` ou `in_aircraft` | champ airutils absent ou renommé (agent `compat-airutils`) ; `get_luaentity()` ou `get_pos()` nil |
 | `Not enough arguments`, `Too many arguments` ou `not in the correct order` (core.translate) | marqueurs `@N` de `S()` incohérents, détectés par `check.py i18n` |
 | `attempt to concatenate a nil value` dans un `S()` | argument nil passé à `S()` (ex. `p.throttle`) |
-| `area volume exceeds allowed value` | `find_nodes_in_area` avec `radar_atc.transponder_link_r` ≥ 80 |
+| `area volume exceeds allowed value` | `find_nodes_in_area` sur un cube de rayon ≥ 80 (`transponder_link_r` est plafonné à 79 : chercher un autre rayon non borné) |
 | avertissement `Undeclared global variable` | faute de frappe ou `local` manquant, détecté par `check.py globals` |
 | bouton sans effet | traitement absent de fields.lua, ou placé dans le mauvais bloc `data.tab`, détecté par `check.py fields` |
 | formulaire tronqué, éléments étranges | texte non échappé (`fe()` manquant) |
-| nom de piste incohérent avec son dessin | bug connu de `bearing()` (voir `tools/tests/run.lua`) |
+| nom de piste incohérent avec son dessin | piste au nom saisi à la main ou au nom incohérent, non touchée par la migration de storage.lua (`rwy_names_fixed_v1`) |
 
 ## 3. Méthode
 1. **Reproduire** : étapes minimales (onglet, action, données, un ou plusieurs joueurs). Si la reproduction est impossible, classer les hypothèses et dire ce qui permettrait de trancher.

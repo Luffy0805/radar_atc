@@ -51,8 +51,10 @@ end
 -- =============================================================
 --  GEOGRAPHY / AIRPORTS
 -- =============================================================
+-- True heading from p1 to p2: +X = east, +Z = north, 0° = north, 90° = east
+-- (same convention as /atc navigate and the radar display).
 function bearing(p1, p2)
-    return math.deg(math.atan2(p2.x - p1.x, -(p2.z - p1.z))) % 360
+    return math.deg(math.atan2(p2.x - p1.x, p2.z - p1.z)) % 360
 end
 
 function rwy_num(b)
@@ -60,9 +62,11 @@ function rwy_num(b)
     return n == 0 and 36 or n
 end
 
-function rwy_name(p1, p2, suffix)
-    local b1 = bearing(p1, p2)
-    local n1 = rwy_num(b1); local n2 = rwy_num((b1 + 180) % 360)
+-- b1 (optional): heading p1→p2 to use instead of bearing(p1, p2)
+function rwy_name(p1, p2, suffix, b1)
+    b1 = b1 or bearing(p1, p2)
+    -- n2 derived from n1: the two ends always differ by 18 (no 04/23 at 45°)
+    local n1 = rwy_num(b1); local n2 = (n1 + 17) % 36 + 1
     local s = (suffix or ""):upper():gsub("[^LRC]", ""):sub(1, 1)
     local so = s == "L" and "R" or (s == "R" and "L" or s)
     local lo, hi = n1, n2
@@ -194,14 +198,16 @@ end
 function fe(s)  return minetest.formspec_escape(tostring(s or "")) end
 function clr(c, t) return minetest.colorize(c, tostring(t or "")) end
 
-function mkdd(x, y, w, name, items, sel_val)
+-- index_event = true: Luanti sends back the index of the chosen entry instead
+-- of its label (the label may be translated on the client side)
+function mkdd(x, y, w, name, items, sel_val, index_event)
     local idx = 1; local strs = {}
     for i, v in ipairs(items) do
-        strs[i] = tostring(v)
+        strs[i] = fe(tostring(v))   -- a ',' or ';' in a name would break the dropdown
         if v == sel_val then idx = i end
     end
-    return string.format("dropdown[%.2f,%.2f;%.2f,0.60;%s;%s;%d]",
-        x, y, w, name, table.concat(strs, ","), idx)
+    return string.format("dropdown[%.2f,%.2f;%.2f,0.60;%s;%s;%d%s]",
+        x, y, w, name, table.concat(strs, ","), idx, index_event and ";true" or "")
 end
 
 function scroll_box(x, y, w, h, name)

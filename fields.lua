@@ -4,6 +4,22 @@
 
 local S = minetest.get_translator("radar_atc")
 
+-- Airport dropdown (myap_sel): drawn with index_event, so Luanti sends the
+-- index of the chosen entry; tab_myairport() stores the matching ids in
+-- data._myap_choices. Never match the label: the client translates it.
+-- The label parsing below only handles a formspec drawn by an older version.
+local function myap_choice(data, raw)
+    raw = raw or ""
+    local i, ids = tonumber(raw), data._myap_choices
+    if i and ids and ids[i] then return ids[i] end
+    if raw:find("Independent runways", 1, true) then
+        return "goto_strips_view"
+    end
+    local nv = raw:match("^([A-Z0-9]+)%s*%-%-?%s*") or raw:match("^([A-Z0-9]+)")
+    if not nv or nv == "" then nv = raw:sub(1, 6) end
+    return (nv:upper():gsub("[^A-Z0-9]", ""):sub(1, 6))
+end
+
 function do_fields(app, mtos, sender, fields)
     local data = mtos.bdev:get_app_storage('ram', 'radar')
     data.tab        = data.tab        or "radar"
@@ -34,6 +50,20 @@ function do_fields(app, mtos, sender, fields)
                 data.admin_err = nil
             end
             data.tab = t
+            return true
+        end
+    end
+
+    -- Paginated lists: <list>_prev / <list>_next change data.<list>_page.
+    -- The upper bound is applied when drawing (ui_tabs.lua clamps to the page count).
+    -- pl = aircraft (radar), rw / rw2 = runways, st / st2 = independent runways
+    for _, k in ipairs({"pl", "rw", "rw2", "st", "st2"}) do
+        if fields[k .. "_prev"] then
+            data[k .. "_page"] = math.max(1, (data[k .. "_page"] or 1) - 1)
+            return true
+        end
+        if fields[k .. "_next"] then
+            data[k .. "_page"] = (data[k .. "_page"] or 1) + 1
             return true
         end
     end
@@ -75,24 +105,10 @@ function do_fields(app, mtos, sender, fields)
         -- Process control actions FIRST (myap_sel does return true)
         if fields.ctrl_request then
             if fields.myap_sel then
-                local raw = fields.myap_sel or ""
-                if raw:find("Pistes independantes", 1, true) or raw:find("Independent runways", 1, true) then
+                local nv = myap_choice(data, fields.myap_sel)
+                if nv == "goto_strips_view" then
                     data.myap_view = "goto_strips_view"
                     return true
-                end
-                local nv
-                if raw:sub(1, 2) == "  " then
-                    local sname = raw:match("^%s+(.-)%s*$") or raw
-                    for si, st in ipairs(get_strips()) do
-                        if st.name and (st.name == sname or raw:find(st.name, 1, true)) then
-                            nv = "strip:" .. si; break
-                        end
-                    end
-                    nv = nv or raw
-                else
-                    nv = raw:match("^([A-Z0-9]+)%s*%-%-?%s*") or raw:match("^([A-Z0-9]+)")
-                    if not nv or nv == "" then nv = raw:sub(1, 6) end
-                    nv = nv:upper():gsub("[^A-Z0-9]", ""):sub(1, 6)
                 end
                 if nv ~= data.myap_view then
                     data.myap_ctrl_mode = nil; data.myap_ctrl_err = nil
@@ -143,24 +159,10 @@ function do_fields(app, mtos, sender, fields)
 
         -- Dropdown change (last)
         if fields.myap_sel then
-            local raw = fields.myap_sel or ""
-            if raw:find("Pistes independantes", 1, true) or raw:find("Independent runways", 1, true) then
+            local nv = myap_choice(data, fields.myap_sel)
+            if nv == "goto_strips_view" then
                 data.myap_view = "goto_strips_view"
                 return true
-            end
-            local nv
-            if raw:sub(1, 2) == "  " then
-                local sname = raw:match("^%s+(.-)%s*$") or raw
-                for si, st in ipairs(get_strips()) do
-                    if st.name and (st.name == sname or raw:find(st.name, 1, true)) then
-                        nv = "strip:" .. si; break
-                    end
-                end
-                nv = nv or raw
-            else
-                nv = raw:match("^([A-Z0-9]+)%s*%-%-?%s*") or raw:match("^([A-Z0-9]+)")
-                if not nv or nv == "" then nv = raw:sub(1, 6) end
-                nv = nv:upper():gsub("[^A-Z0-9]", ""):sub(1, 6)
             end
             if nv ~= data.myap_view then
                 data.myap_ctrl_mode = nil; data.myap_ctrl_err = nil
@@ -262,9 +264,9 @@ function do_fields(app, mtos, sender, fields)
             data.n_ap_y    = fields.ap_py   or data.n_ap_y    or ""
             data.n_ap_z    = fields.ap_pz   or data.n_ap_z    or ""
             local id = (data.n_ap_id):upper():gsub("[^A-Z0-9]", ""):sub(1, 6)
-            if #id == 0 then data.n_ap_err = "Identifier required."; return true end
-            if #(data.n_ap_name or "") == 0 then data.n_ap_err = "Name required."; return true end
-            if find_ap(id) then data.n_ap_err = "ID '" .. id .. "' already used."; return true end
+            if #id == 0 then data.n_ap_err = S("Identifier required."); return true end
+            if #(data.n_ap_name or "") == 0 then data.n_ap_err = S("Name required."); return true end
+            if find_ap(id) then data.n_ap_err = S("ID '@1' already used.", id); return true end
             local px = tonumber(data.n_ap_x); local pv = tonumber(data.n_ap_y); local pz = tonumber(data.n_ap_z)
             local pos = (px and pv and pz) and {x=px, y=pv, z=pz}
                        or {x=mtos.pos.x, y=mtos.pos.y, z=mtos.pos.z}
@@ -357,7 +359,7 @@ function do_fields(app, mtos, sender, fields)
                 data["n_st_"..k] = fields["strip_"..k] or data["n_st_"..k] or ""
             end
             if (data.n_st_name or "") == "" then
-                data.n_st_err = "Name required."; return true
+                data.n_st_err = S("Name required."); return true
             end
             local function rn(k) return tonumber(data["n_st_"..k]) end
             local p1x,p1y,p1z = rn("p1x"),rn("p1y"),rn("p1z")

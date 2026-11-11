@@ -234,6 +234,8 @@ radar_atc.notam_max_lines = 10
 radar_atc.atc_log_max = 10
 ```
 
+`transponder_link_r` est plafonné à 79 : au-delà, le cube fouillé autour de l'aéroport dépasse la limite de Luanti (4 096 000 blocs).
+
 ---
 
 ## Licence

@@ -10,7 +10,7 @@ description: Crée, corrige et synchronise les traductions de radar_atc (locale/
 ## Fichiers
 - `locale/radar_atc.<code>.tr` pour fr, de, es, it, pt (portugais européen) et ru. Luanti ne charge que ces fichiers.
 - `locale/template.txt` : mode d'emploi pour les traducteurs (ce n'est pas une liste de clés).
-- Des `.tr` à la racine du dépôt sont des copies obsolètes, ignorées par Luanti : proposer de les supprimer.
+- Un `.tr` hors de `locale/` (souvent déposé à la racine par un upload GitHub) est ignoré par Luanti : proposer de le supprimer.
 - Côté code : `local S = minetest.get_translator("radar_atc")` ; la chaîne source anglaise sert de clé.
 
 ## Format .tr (Luanti)

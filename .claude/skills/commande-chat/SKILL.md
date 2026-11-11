@@ -31,6 +31,6 @@ Retour : `return true, texte` (succès) ou `return false, texte` (erreur), ou pl
 
 ## Pièges
 - `minetest.get_player_by_name(name)` peut renvoyer nil (commande lancée depuis la console ou un pont IRC) ; `player:get_attach()` aussi.
-- Convention de cap du mod : +X = est, +Z = nord, cap = `atan2(dx, dz)` (comme `hdg_str` et `card_dir`). `utils.bearing()` est en miroir nord/sud pour les pistes en diagonale : bug connu, voir `tools/tests/run.lua`.
+- Convention de cap du mod : +X = est, +Z = nord, cap = `atan2(dx, dz)` (comme `hdg_str` et `card_dir`). `utils.bearing()` suit la même convention.
 - `card_dir` (commands.lua) utilise des abréviations françaises codées en dur (SO, O, NO…) et non traduites, alors que `head2card` (utils.lua) est en anglais. Dans du nouveau code, réutiliser `head2card` / `cap_to_dir` plutôt que dupliquer une table.
 - La condition « est un avion » (`_vehicle_name` et `_max_plane_hp` ou `_climb_rate`) existe en double, dans `in_aircraft` (commands.lua) et dans `scan()` (scan.lua) : les garder identiques.

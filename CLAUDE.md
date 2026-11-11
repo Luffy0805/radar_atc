@@ -48,6 +48,7 @@ Flux : `laptop.register_app` (init.lua) → `formspec_func` → `build_fs()` ; c
 | `notam_<ID>` | liste de chaînes |
 | `atclog_<ID>` | `{time, player, model, req_type, decision, runway}`, le plus récent en premier |
 | `passwords_v1` | `{admin, remote}`, prioritaires sur les valeurs de config.lua |
+| `rwy_names_fixed_v1` | entier, 1 = migration des noms de piste déjà faite |
 
 Changer la forme d'une de ces tables impose une migration (skill `/stockage`) : sur un serveur, ce sont les données des joueurs.
 
@@ -68,7 +69,7 @@ API laptop utilisée : `laptop.register_app`, `laptop.os_get(pos)`, `mtos.bdev:g
 
 **Traductions** (skill `/traductions`) :
 - `local S = minetest.get_translator("radar_atc")` en tête de fichier ; chaînes source en anglais.
-- 6 langues dans `locale/radar_atc.<code>.tr` : fr, de, es, it, pt (européen), ru. Les `.tr` à la racine du dépôt ne sont pas chargés (copies obsolètes).
+- 6 langues dans `locale/radar_atc.<code>.tr` : fr, de, es, it, pt (européen), ru. Un `.tr` hors de `locale/` n'est pas chargé par Luanti.
 - Dans un .tr : saut de ligne = `@n` (jamais `\n`), `=` littéral = `@=`. Dans `S()`, les `@1`…`@9` vont dans l'ordre et en nombre égal aux arguments, sinon erreur Lua à l'exécution.
 
 **Globales** : toute nouvelle globale doit être voulue et déclarée dans `tools/known_globals.txt`, sinon `check.py globals` échoue. Préférer `local`. Des noms courts comme `scan`, `fe`, `clr` ou `pk` peuvent entrer en conflit avec d'autres mods : préfixer les nouveaux.
@@ -77,10 +78,10 @@ API laptop utilisée : `laptop.register_app`, `laptop.os_get(pos)`, `mtos.bdev:g
 
 ## Pièges connus
 - **Uploads par le site GitHub** : ils ont déjà écrasé `mod.conf` (version revenue de 1.1.0 à 1.0.5, deux fois) et déposé des `.tr` à la racine. Après chaque upload, relancer `python3 tools/check.py` ; `check.py meta` détecte une version qui recule.
-- `find_nodes_in_area` est limité à 4 096 000 nœuds : avec `transponder_link_r` comme rayon, (2r+1)³ dépasse la limite dès r = 80.
+- `find_nodes_in_area` est limité à 4 096 000 nœuds (= 160³) : un cube de rayon r en compte (2r+1)³. C'est pourquoi `transponder_link_r` est plafonné à 79 dans config.lua ; tout nouveau rayon de recherche doit l'être aussi.
 - `on_timer` tourne toutes les 3 s par laptop ouvert et `scan()` couvre jusqu'à 5000 m : n'y ajouter rien de coûteux.
 - `minetest.get_node` renvoie `ignore` en zone non chargée ; `get_luaentity()` et `get_player_by_name()` peuvent renvoyer nil.
-- Convention de cap du mod : +X = est, +Z = nord, cap = `atan2(dx, dz)`. `bearing()` (utils.lua) ne la respecte pas pour les pistes en diagonale : bug connu, documenté dans `tools/tests/run.lua`.
+- Convention de cap du mod : +X = est, +Z = nord, cap = `atan2(dx, dz)`, partout (`bearing()`, `/atc navigate`, radar). Jusqu'à 1.1.0, `bearing()` inversait nord et sud : les pistes en diagonale déjà enregistrées sont renommées une fois au démarrage (storage.lua, drapeau `rwy_names_fixed_v1`).
 
 ## Tester en jeu
 Prérequis : Luanti avec le jeu Minetest Game, et les mods laptop, airutils et au moins un avion (ex. Super Cub) activés dans le monde avec radar_atc. Installation de développement : lien symbolique du dépôt dans le dossier `mods/` de Luanti (`ln -s "$PWD" <dossier_luanti>/mods/radar_atc`). Erreurs : `debug.txt` du dossier utilisateur de Luanti.

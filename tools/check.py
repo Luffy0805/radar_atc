@@ -459,6 +459,15 @@ def handled_fields():
                     exact.setdefault(m.group(1), (path.name, src.line_of(idx + m.start())))
         for k in range(len(toks) - 2):
             (k1, v1, i1), (k2, v2, i2), (k3, v3, _) = toks[k], toks[k + 1], toks[k + 2]
+            # fields[k .. "_suffixe"] avec k lié à une boucle sur une liste littérale
+            suf = re.search(r"(?<![\w.:])fields\s*\[\s*([A-Za-z_]\w*)\s*\.\.\s*$", v1) if k1 == "code" else None
+            if suf and k2 == "str" and k3 == "code" and re.match(r"\s*\]", v3):
+                line = src.line_of(i2)
+                for lv, vals, lline in loops:
+                    if lv == suf.group(1) and 0 <= line - lline <= 20:
+                        for b in vals:
+                            exact.setdefault(b + v2, (path.name, line))
+                continue
             if k1 == "code" and k2 == "str" and k3 == "code" and re.search(r"(?<![\w.:])fields\s*\[\s*$", v1):
                 line = src.line_of(i2)
                 if re.match(r"\s*\]", v3):

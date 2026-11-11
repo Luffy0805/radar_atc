@@ -157,6 +157,8 @@ radar_atc.notam_max_lines = 10
 radar_atc.atc_log_max = 10
 ```
 
+`transponder_link_r` is capped at 79: above that, the search cube around the airport exceeds Luanti's limit of 4 096 000 nodes.
+
 ---
 
 ## License

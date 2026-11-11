@@ -14,7 +14,7 @@
 
 local ROOT = (arg and arg[0] or ""):match("^(.-)tools[/\\]tests[/\\]run%.lua$") or "../../"
 
--- ---- API minetest simulée (le strict nécessaire pour config.lua et utils.lua)
+-- ---- API minetest simulée (le strict nécessaire pour config.lua, storage.lua et utils.lua)
 local function fake_translate(s, ...)
     local args = {...}
     return (s:gsub("@(.)", function(c)
@@ -29,11 +29,29 @@ minetest = {
     get_translator  = function() return fake_translate end,
     formspec_escape = function(s) return (tostring(s):gsub("[%[%];,\\]", "\\%0")) end,
     colorize        = function(_, text) return text end,
+    log             = function() end,
 }
 core = minetest
 
+-- mod_storage simulé : serialize() range la table et renvoie une étiquette
+local STORE, SERIAL = {}, {}
+minetest.get_mod_storage = function()
+    return {
+        get_string = function(_, k) return type(STORE[k]) == "string" and STORE[k] or "" end,
+        set_string = function(_, k, v) STORE[k] = v end,
+        get_int    = function(_, k) return tonumber(STORE[k]) or 0 end,
+        set_int    = function(_, k, v) STORE[k] = v end,
+    }
+end
+minetest.serialize   = function(t) SERIAL[#SERIAL + 1] = t; return "T" .. #SERIAL end
+minetest.deserialize = function(s) return SERIAL[tonumber(s:sub(2))] end
+local MODS_LOADED = {}
+minetest.register_on_mods_loaded = function(fn) MODS_LOADED[#MODS_LOADED + 1] = fn end
+
 dofile(ROOT .. "config.lua")
+dofile(ROOT .. "storage.lua")
 dofile(ROOT .. "utils.lua")
+local storage_get_airports = get_airports
 
 -- ---- Mini-cadre de test
 local passed, failed, known = 0, 0, 0
@@ -111,12 +129,37 @@ test("rwy_name : suffixe C conservé, L/R en paire opposée, suffixe invalide ig
     assert(a and b and a ~= b, "L/R attendus en paire opposée, obtenu " .. n)
 end)
 
-bug_connu("rwy_name suit le cap réel : piste orientée 030°/210° → 03/21 (comme /atc navigate)", function()
-    -- /atc navigate (hdg_str) et le dessin du radar placent le nord en +Z.
-    -- bearing() calcule atan2(dx, -dz) : les pistes en diagonale sont nommées
-    -- en miroir nord/sud (030° devient 15/33, 045° devient 14/32).
+test("rwy_name suit le cap réel : piste 030°/210° → 03/21, comme /atc navigate", function()
     eq(rwy_name(O, at(30, 100), ""), "03/21", "piste 030°")
-    eq(rwy_name(O, at(45, 100), ""), "05/23", "piste 045°")
+    eq(rwy_name(O, at(210, 100), ""), "03/21", "piste 210°")
+    eq(rwy_name(O, at(44, 100), ""), "04/22", "piste 044°")
+    local n = rwy_name(O, {x = 100, y = 0, z = 100}, "")  -- 45° pile
+    assert(n == "05/23" or n == "04/22", "45° : paire cohérente attendue, obtenu " .. n)
+    eq(rwy_name(O, at(300, 100), ""), "12/30", "piste 300°")
+    near(bearing(O, at(30, 100)), 30, 1e-6, "bearing 030°")
+end)
+
+test("migration des noms de piste (ancien calcul en miroir nord/sud)", function()
+    -- ancien nom de la piste 030°/210° : 15/33 ; suffixe saisi L → 15R/33L
+    local diag = {name = "15R/33L", p1 = O, p2 = at(30, 100),
+                  approaches = {["15R"] = "1,2", ["33L"] = "3,4"}}
+    local ns   = {name = "18/36", p1 = O, p2 = at(0, 100), approaches = {["18"] = "5,6"}}
+    local hand = {name = "Grande piste", p1 = O, p2 = at(30, 100)}
+    STORE["airports_v5"] = minetest.serialize({{id = "AP", runways = {diag, ns, hand}}})
+    for _, fn in ipairs(MODS_LOADED) do fn() end
+    local rws = storage_get_airports()[1].runways
+    eq(rws[1].name, "03R/21L", "diagonale renommée, suffixe sur le même bout")
+    -- 15R était le bout p1→p2, devenu 03R ; 33L le bout p2→p1, devenu 21L
+    eq(rws[1].approaches["03R"], "1,2", "approche du bout p1→p2")
+    eq(rws[1].approaches["21L"], "3,4", "approche du bout p2→p1")
+    eq(rws[1].approaches["15R"], nil, "ancienne clé retirée")
+    eq(rws[2].name, "18/36", "piste nord-sud inchangée")
+    eq(rws[2].approaches["18"], "5,6", "approche nord-sud inchangée")
+    eq(rws[3].name, "Grande piste", "nom saisi à la main conservé")
+    eq(STORE["rwy_names_fixed_v1"], 1, "drapeau posé")
+    rws[1].name = "15R/33L"
+    for _, fn in ipairs(MODS_LOADED) do fn() end
+    eq(rws[1].name, "15R/33L", "la migration ne tourne qu'une fois")
 end)
 
 test("w2r : centre, est, nord en haut de l'écran, hors portée", function()

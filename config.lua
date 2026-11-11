@@ -64,8 +64,11 @@ CFG = {
     transponder_free_radius = tonumber(setting("transponder_free_radius", "1000")),
 
     -- [SETTING] Maximum distance (blocks) between the radar computer and the
-    -- transponder for it to be considered active
-    transponder_link_r      = tonumber(setting("transponder_link_r",      "75")),
+    -- transponder for it to be considered active.
+    -- Capped at 79: find_nodes_in_area() searches a cube of (2r+1)³ nodes and
+    -- Luanti refuses more than 4 096 000 (= 160³) — r = 80 crashed the server.
+    transponder_link_r      = math.max(1, math.min(79,
+        tonumber(setting("transponder_link_r", "75")) or 75)),
 
     -- [SETTING] Radar antenna rotation speed (radians/second)
     -- 0.4 ≈ 1 tour toutes les 16s  |  1.0 ≈ 1 tour toutes les 6s

@@ -60,6 +60,79 @@ function find_ap(id)
 end
 
 -- =============================================================
+--  One-time fix of runway names (radar_atc ≤ 1.1.0)
+--  bearing() used to flip north and south, so diagonal runways were
+--  named as their mirror image (a 030°/210° runway became "15/33").
+--  Renames those runways and moves each approach point and L/R/C
+--  suffix along with its physical runway end. Runways whose numbers do
+--  not change (north-south, east-west) and names that do not match the
+--  old automatic name (edited by hand) are left untouched.
+-- =============================================================
+local RWY_FIX_FLAG = "rwy_names_fixed_v1"
+
+local function old_bearing(p1, p2)
+    return math.deg(math.atan2(p2.x - p1.x, -(p2.z - p1.z))) % 360
+end
+
+-- Name token ("03L") of the runway end whose number is `num`
+local function token_for(name, num)
+    for tok in name:gmatch("[^/]+") do
+        if tonumber(tok:match("^(%d+)")) == num then return tok end
+    end
+end
+
+-- Returns the corrected name and the old→new end token map, or nil
+local function fixed_runway_name(p1, p2, name)
+    local ob = old_bearing(p1, p2)
+    local suffix
+    for _, s in ipairs({"", "L", "R", "C"}) do
+        if rwy_name(p1, p2, s, ob) == name then suffix = s; break end
+    end
+    if not suffix then return nil end                  -- edited by hand: leave it
+    local nb = bearing(p1, p2)
+    local o1 = rwy_num(ob); local o2 = (o1 + 17) % 36 + 1
+    local n1 = rwy_num(nb); local n2 = (n1 + 17) % 36 + 1
+    if (o1 == n1 and o2 == n2) or (o1 == n2 and o2 == n1) then
+        return nil                                     -- same numbers (N-S, E-W): unchanged
+    end
+    local new_name = rwy_name(p1, p2, suffix)
+    -- o1/n1 = end p1→p2, o2/n2 = end p2→p1: each keeps its physical end
+    return new_name, {
+        [token_for(name, o1)] = token_for(new_name, n1),
+        [token_for(name, o2)] = token_for(new_name, n2),
+    }
+end
+
+local function fix_runway(rw)
+    if not (rw.p1 and rw.p2 and type(rw.name) == "string") then return false end
+    local new_name, ends = fixed_runway_name(rw.p1, rw.p2, rw.name)
+    if not new_name then return false end
+    if rw.approaches then
+        local moved = {}
+        for key, coords in pairs(rw.approaches) do
+            moved[ends[key] or key] = coords
+        end
+        rw.approaches = moved
+    end
+    minetest.log("action", "[radar_atc] runway renamed " .. rw.name .. " → " .. new_name
+        .. " (heading fix)")
+    rw.name = new_name
+    return true
+end
+
+minetest.register_on_mods_loaded(function()
+    if ST:get_int(RWY_FIX_FLAG) == 1 then return end
+    local changed = false
+    for _, ap in ipairs(get_airports()) do
+        for _, rw in ipairs(ap.runways or {}) do
+            if fix_runway(rw) then changed = true end
+        end
+    end
+    if changed then save_airports() end
+    ST:set_int(RWY_FIX_FLAG, 1)
+end)
+
+-- =============================================================
 --  INDEPENDENT RUNWAYS (no dedicated ATC)
 --  Structure: {name=str, p1={x,y,z}, p2={x,y,z}, width=int, note=str}
 -- =============================================================
