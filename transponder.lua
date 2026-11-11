@@ -12,80 +12,104 @@ local function transponder_notify(pos, present)
     local airports = get_airports()
     for i, a in ipairs(airports) do
         if a.id == ap.id then
-            airports[i].has_transponder = present
-            save_airports()
+            if (airports[i].has_transponder or false) ~= present then
+                airports[i].has_transponder = present
+                save_airports()
+            end
             return
         end
     end
 end
 
--- Checks that a transponder is associated with the active airport.
--- Uses stored flag (works even if chunks are distant).
--- ap_center = airport position (for find_nodes fallback when chunk is loaded)
+-- =============================================================
+--  NODE SEARCH AROUND A POSITION (transponder, link antenna)
+--  find_nodes_in_area() on a cube of radius r reads (2r+1)³ nodes
+--  (3.4 million for r = 75) and loads every mapblock of the cube from
+--  the database. It used to run on every radar refresh (every 3 s per
+--  open laptop), which could lag a server until it had to be restarted.
+--  Results are now cached for SEARCH_TTL seconds (cleared as soon as a
+--  transponder or link antenna is placed or removed), and an area whose
+--  centre is not loaded is never searched (no loading from disk).
+-- =============================================================
+local SEARCH_TTL   = 60
+local search_cache = {}   -- [nodename .. "@" .. pk(pos)] = {t = os.time(), found = bool}
+
+local function clear_search_cache()
+    search_cache = {}
+end
+
+local function node_in_cube(center, nodename)
+    local key = nodename .. "@" .. pk(center)
+    local c = search_cache[key]
+    local now = os.time()
+    if c and now - c.t < SEARCH_TTL then return c.found end
+    if minetest.get_node_or_nil(center) == nil then
+        -- area not loaded: do not load ~1000 mapblocks; keep the last answer
+        return c and c.found or false
+    end
+    local r = CFG.transponder_link_r
+    local nodes = minetest.find_nodes_in_area(
+        {x=center.x-r, y=center.y-r, z=center.z-r},
+        {x=center.x+r, y=center.y+r, z=center.z+r},
+        {nodename})
+    local found = #nodes > 0
+    search_cache[key] = {t = now, found = found}
+    return found
+end
+
+-- Checks that a transponder serves the radar centred on ap_center.
+-- 1. stored flag of the airport at that position, or of the nearest airport
+--    within airport_link_r (kept up to date when a transponder is placed,
+--    removed or loaded);
+-- 2. otherwise a physical search around ap_center (cached, loaded areas only).
 function transponder_ok(ap_center, radius)
     if not CFG.transponder_enabled then return true end
     if radius <= CFG.transponder_free_radius then return true end
     if not ap_center then return false end
-    -- Find the airport whose position matches ap_center
+    local ap
     for _, a in ipairs(get_airports()) do
-        if a.pos then
-            local dx = math.abs(a.pos.x - ap_center.x)
-            local dy = math.abs(a.pos.y - ap_center.y)
-            local dz = math.abs(a.pos.z - ap_center.z)
-            if dx < 2 and dy < 2 and dz < 2 then
-                -- Airport found: use the persistent flag
-                if a.has_transponder then return true end
-                -- Fallback: physical check if chunk is loaded
-                local r = CFG.transponder_link_r or 75
-                local nodes = minetest.find_nodes_in_area(
-                    {x=ap_center.x-r, y=ap_center.y-r, z=ap_center.z-r},
-                    {x=ap_center.x+r, y=ap_center.y+r, z=ap_center.z+r},
-                    {"radar_atc:transponder"}
-                )
-                if #nodes > 0 then
-                    -- Update the flag
-                    for i, ai in ipairs(get_airports()) do
-                        if ai.id == a.id then
-                            get_airports()[i].has_transponder = true
-                            save_airports()
-                        end
-                    end
-                    return true
-                end
-                return false
-            end
+        if a.pos and math.abs(a.pos.x - ap_center.x) < 2 and math.abs(a.pos.y - ap_center.y) < 2
+           and math.abs(a.pos.z - ap_center.z) < 2 then
+            ap = a; break
         end
     end
-    -- Airport not found: physical fallback
-    local r = CFG.transponder_link_r or 75
-    local nodes = minetest.find_nodes_in_area(
-        {x=ap_center.x-r, y=ap_center.y-r, z=ap_center.z-r},
-        {x=ap_center.x+r, y=ap_center.y+r, z=ap_center.z+r},
-        {"radar_atc:transponder"}
-    )
-    return #nodes > 0
+    ap = ap or linked_ap(ap_center)
+    if ap and ap.has_transponder then return true end
+    if not node_in_cube(ap_center, "radar_atc:transponder") then return false end
+    if ap then
+        ap.has_transponder = true   -- remember it: next time the flag is enough
+        save_airports()
+    end
+    return true
 end
 
 -- Checks that a link antenna exists near the COMPUTER (ordi_pos).
 -- No configuration required: its mere presence is enough.
 function link_antenna_ok(ordi_pos)
     if not ordi_pos then return false end
-    local r = CFG.transponder_link_r or 75
-    local nodes = minetest.find_nodes_in_area(
-        {x=ordi_pos.x-r, y=ordi_pos.y-r, z=ordi_pos.z-r},
-        {x=ordi_pos.x+r, y=ordi_pos.y+r, z=ordi_pos.z+r},
-        {"radar_atc:link_antenna"}
-    )
-    return #nodes > 0
+    return node_in_cube(ordi_pos, "radar_atc:link_antenna")
 end
 
 -- ─────────────────────────────────────────────────────────────
 --  OFFSETS (mesh pivot adjustments)
 -- ─────────────────────────────────────────────────────────────
-local BASE_Y      = -1.00
-local DISH_Y      =  3.00
-local WAKE_RADIUS = 48
-local SLEEP_CHECK =  2.0
+local BASE_Y       = -1.00
+local DISH_Y       =  3.00
+local ORPHAN_CHECK =  2.0   -- s between two "is my node still there?" checks
+
+-- on_step shared by the decoration entities: removes the entity when its
+-- anchor node is gone (e.g. removed without on_destruct, by WorldEdit).
+-- Checked every ORPHAN_CHECK s instead of every server step.
+local function orphan_step(nodename)
+    return function(self, dtime)
+        self._check = (self._check or 0) + dtime
+        if self._check < ORPHAN_CHECK then return end
+        self._check = 0
+        if self._node_pos and minetest.get_node(self._node_pos).name ~= nodename then
+            self.object:remove()
+        end
+    end
+end
 
 -- =============================================================
 --  BASE ENTITY (fixed, no rotation)
@@ -98,56 +122,25 @@ minetest.register_entity("radar_atc:radar_base_entity", {
     },
     _node_pos = nil,
     on_activate = function(self) self.object:set_armor_groups({immortal=1}) end,
-    on_step = function(self)
-        if self._node_pos then
-            if minetest.get_node(self._node_pos).name ~= "radar_atc:transponder" then
-                self.object:remove()
-            end
-        end
-    end,
-    on_deactivate = function(self) end,
+    on_step = orphan_step("radar_atc:transponder"),
 })
 
 -- =============================================================
 --  DISH ENTITY (rotating)
+--  automatic_rotate: the client turns the dish by itself. It used to be
+--  turned by the server with set_rotation() at every server step, which
+--  sent a rotation update to every player around ~10 times per second.
 -- =============================================================
 minetest.register_entity("radar_atc:radar_dish", {
     initial_properties = {
         physical=false, collide_with_objects=false, pointable=false,
         static_save=false, visual="mesh", mesh="radar_dish.obj",
         textures={"radar_dish_palette.png"}, visual_size={x=10,y=10,z=10}, glow=0,
+        automatic_rotate = CFG.transponder_rotation_speed,
     },
-    _node_pos    = nil,
-    _yaw         = 0,
-    _sleep_timer = 0,
-    _sleeping    = false,
-
+    _node_pos = nil,
     on_activate = function(self) self.object:set_armor_groups({immortal=1}) end,
-
-    on_step = function(self, dtime)
-        if self._node_pos then
-            if minetest.get_node(self._node_pos).name ~= "radar_atc:transponder" then
-                self.object:remove(); return
-            end
-        end
-        if self._sleeping then
-            self._sleep_timer = self._sleep_timer + dtime
-            if self._sleep_timer < SLEEP_CHECK then return end
-            self._sleep_timer = 0
-        end
-        local pos = self.object:get_pos()
-        if not pos then return end
-        local player_near = false
-        for _, obj in ipairs(minetest.get_objects_inside_radius(pos, WAKE_RADIUS)) do
-            if obj:is_player() then player_near = true; break end
-        end
-        if not player_near then self._sleeping = true; return end
-        self._sleeping = false
-        local speed = CFG.transponder_rotation_speed or 0.4
-        self._yaw = (self._yaw + speed * dtime) % (2 * math.pi)
-        self.object:set_rotation({x=0, y=self._yaw, z=0})
-    end,
-    on_deactivate = function(self) end,
+    on_step = orphan_step("radar_atc:transponder"),
 })
 
 -- =============================================================
@@ -257,10 +250,12 @@ minetest.register_node("radar_atc:transponder", {
         minetest.after(0.5, spawn_all, pos)
         minetest.get_node_timer(pos):start(10)
         minetest.after(0.1, function() transponder_notify(pos, true) end)
+        clear_search_cache()
     end,
     on_destruct = function(pos)
         remove_all(pos)
         transponder_notify(pos, false)
+        clear_search_cache()
     end,
     on_timer    = function(pos) check_and_respawn(pos); return true end,
 })
@@ -282,6 +277,9 @@ minetest.register_lbm({
             if minetest.get_node(pos).name == "radar_atc:transponder" then
                 check_and_respawn(pos)
                 minetest.get_node_timer(pos):start(10)
+                -- keeps the airport flag right, even for a transponder placed
+                -- before its airport was created
+                transponder_notify(pos, true)
             end
         end)
     end,
@@ -403,14 +401,7 @@ minetest.register_entity("radar_atc:link_antenna_entity", {
     },
     _node_pos = nil,
     on_activate = function(self) self.object:set_armor_groups({immortal=1}) end,
-    on_step = function(self)
-        if self._node_pos then
-            if minetest.get_node(self._node_pos).name ~= "radar_atc:link_antenna" then
-                self.object:remove()
-            end
-        end
-    end,
-    on_deactivate = function(self) end,
+    on_step = orphan_step("radar_atc:link_antenna"),
 })
 
 local LINK_PIVOT_Y = - 0.5    -- mesh bottom pivot = anchor node level
@@ -461,8 +452,9 @@ minetest.register_node("radar_atc:link_antenna", {
             S("Allows connection to any airport without password\nfrom a radar within @1 blocks.", CFG.transponder_link_r or 75))
         minetest.after(0.5, spawn_link, pos)
         minetest.get_node_timer(pos):start(12)
+        clear_search_cache()
     end,
-    on_destruct = function(pos) remove_link(pos) end,
+    on_destruct = function(pos) remove_link(pos); clear_search_cache() end,
     on_timer    = function(pos) check_link(pos); return true end,
 })
 

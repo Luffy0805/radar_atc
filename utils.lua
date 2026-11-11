@@ -51,8 +51,10 @@ end
 -- =============================================================
 --  GEOGRAPHY / AIRPORTS
 -- =============================================================
+-- True heading from p1 to p2: +X = east, +Z = north, 0° = north, 90° = east
+-- (same convention as /atc navigate and the radar display).
 function bearing(p1, p2)
-    return math.deg(math.atan2(p2.x - p1.x, -(p2.z - p1.z))) % 360
+    return math.deg(math.atan2(p2.x - p1.x, p2.z - p1.z)) % 360
 end
 
 function rwy_num(b)
@@ -60,9 +62,11 @@ function rwy_num(b)
     return n == 0 and 36 or n
 end
 
-function rwy_name(p1, p2, suffix)
-    local b1 = bearing(p1, p2)
-    local n1 = rwy_num(b1); local n2 = rwy_num((b1 + 180) % 360)
+-- b1 (optional): heading p1→p2 to use instead of bearing(p1, p2)
+function rwy_name(p1, p2, suffix, b1)
+    b1 = b1 or bearing(p1, p2)
+    -- n2 derived from n1: the two ends always differ by 18 (no 04/23 at 45°)
+    local n1 = rwy_num(b1); local n2 = (n1 + 17) % 36 + 1
     local s = (suffix or ""):upper():gsub("[^LRC]", ""):sub(1, 1)
     local so = s == "L" and "R" or (s == "R" and "L" or s)
     local lo, hi = n1, n2
@@ -166,50 +170,22 @@ function clip_segment(p1, p2, cp, radius)
            ax + t1 * dx, ay + t1 * dy
 end
 
--- Compat: kept to avoid breaking any existing calls.
--- Prefer clip_segment for drawing segments.
-function w2r_clamp(tp, cp, radius)
-    local dx = (tp.x - cp.x) / radius
-    local dz = -(tp.z - cp.z) / radius
-    local sx = CFG.RW / 2 + dx * CFG.RW / 2
-    local sy = CFG.RH / 2 + dz * CFG.RH / 2
-    local x0, y0 = CFG.RW / 2, CFG.RH / 2
-    local xmin, xmax = 0.05, CFG.RW - 0.25
-    local ymin, ymax = 0.05, CFG.RH - 0.25
-    if sx >= xmin and sx <= xmax and sy >= ymin and sy <= ymax then
-        return sx, sy
-    end
-    local rx, ry = sx - x0, sy - y0
-    local t = 1.0
-    if rx > 0 then t = math.min(t, (xmax - x0) / rx)
-    elseif rx < 0 then t = math.min(t, (xmin - x0) / rx) end
-    if ry > 0 then t = math.min(t, (ymax - y0) / ry)
-    elseif ry < 0 then t = math.min(t, (ymin - y0) / ry) end
-    return x0 + rx * t, y0 + ry * t
-end
-
 -- =============================================================
 --  FORMSPEC HELPERS
 -- =============================================================
 function fe(s)  return minetest.formspec_escape(tostring(s or "")) end
 function clr(c, t) return minetest.colorize(c, tostring(t or "")) end
 
-function mkdd(x, y, w, name, items, sel_val)
+-- index_event = true: Luanti sends back the index of the chosen entry instead
+-- of its label (the label may be translated on the client side)
+function mkdd(x, y, w, name, items, sel_val, index_event)
     local idx = 1; local strs = {}
     for i, v in ipairs(items) do
-        strs[i] = tostring(v)
+        strs[i] = fe(tostring(v))   -- a ',' or ';' in a name would break the dropdown
         if v == sel_val then idx = i end
     end
-    return string.format("dropdown[%.2f,%.2f;%.2f,0.60;%s;%s;%d]",
-        x, y, w, name, table.concat(strs, ","), idx)
-end
-
-function scroll_box(x, y, w, h, name)
-    return string.format("scroll_container[%.2f,%.2f;%.2f,%.2f;%s;vertical]", x, y, w, h, name)
-end
-
-function scroll_bar(x, y, h, name)
-    return string.format("scrollbar[%.2f,%.2f;0.25,%.2f;vertical;%s;0]", x, y, h, name)
+    return string.format("dropdown[%.2f,%.2f;%.2f,0.60;%s;%s;%d%s]",
+        x, y, w, name, table.concat(strs, ","), idx, index_event and ";true" or "")
 end
 
 -- Position key (to identify a node in active_nodes)

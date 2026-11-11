@@ -1,0 +1,64 @@
+# Radar ATC settings.
+# Shown in Settings → All settings → Mods → radar_atc, or set in minetest.conf
+# with the "radar_atc." prefix. Defaults and bounds match config.lua.
+
+[Security]
+
+# Default password for the Admin tab of the Radar ATC app.
+# A password changed in the Admin tab is stored by the mod and takes priority.
+radar_atc.radar_password_admin (Admin tab password) string admin
+
+# Default password to take remote control of an airport.
+# A password changed in the Admin tab is stored by the mod and takes priority.
+radar_atc.radar_password_remote (Airport remote control password) string airport
+
+[Radar]
+
+# Radar refresh interval, in seconds. Each open laptop scans the sky this often:
+# a low value costs server time.
+radar_atc.timer_interval (Radar refresh interval, seconds) int 3 1 60
+
+# Radar range selected when the app starts, in meters.
+# Available ranges: 500, 750, 1000, 1500, 2000, 3000, 5000.
+radar_atc.default_radius (Default radar range, meters) int 1000 500 5000
+
+# Number of past positions drawn behind each aircraft on the radar.
+radar_atc.trail_len (Aircraft trail length, positions) int 5 0 50
+
+[Airports]
+
+# Maximum distance, in meters, for a laptop to link automatically to the
+# nearest airport.
+radar_atc.airport_link_r (Automatic airport link distance, meters) int 500 0 10000
+
+[Transponder]
+
+# If disabled, every radar range is available without an ASR transponder.
+radar_atc.transponder_enabled (Enable the transponder system) bool true
+
+# Maximum radar range without a transponder, in meters.
+# Larger ranges need a radar_atc:transponder node near the airport.
+radar_atc.transponder_free_radius (Radar range without transponder, meters) int 1000 0 5000
+
+# Maximum distance, in blocks, between the airport (or the laptop) and the
+# transponder or link antenna. Capped at 79: the mod searches a cube of
+# (2r+1)³ nodes and Luanti refuses more than 4 096 000.
+radar_atc.transponder_link_r (Transponder link distance, blocks) int 75 1 79
+
+# Rotation speed of the radar antenna model, in radians per second.
+# 0.4 ≈ one turn every 16 s, 1.0 ≈ one turn every 6 s.
+radar_atc.transponder_rotation_speed (Antenna rotation speed, rad/s) float 0.55 0 5
+
+[ATC]
+
+# Age, in seconds, after which a pilot request is shown as stale in the ATC tab.
+radar_atc.req_stale_age (Stale request age, seconds) int 90 10 3600
+
+# Minimum delay, in seconds, between two identical /atc requests from the same pilot.
+radar_atc.req_cmd_cooldown (Delay between identical /atc requests, seconds) int 15 0 600
+
+# Maximum number of NOTAM lines per airport.
+radar_atc.notam_max_lines (NOTAM lines per airport) int 10 1 50
+
+# Number of ATC decisions kept in each airport's log.
+radar_atc.atc_log_max (ATC log size per airport) int 10 1 100
