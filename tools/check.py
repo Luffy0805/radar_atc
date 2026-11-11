@@ -880,6 +880,22 @@ def check_tests(rep):
     if summary:
         print(f"   {summary}")
 
+    # Seuils de performance (lag) : tools/bench.lua --check rejoue des scénarios
+    # de laptops et d'avions et vérifie travail, envois réseau et taille d'écran
+    bench = ROOT / "tools" / "bench.lua"
+    if bench.exists():
+        r = subprocess.run([LUAJIT, "tools/bench.lua", "--check"], cwd=ROOT,
+                           capture_output=True, text=True)
+        out = (r.stdout + r.stderr).strip().splitlines()
+        for line in out:
+            if line.startswith("ÉCHEC"):
+                rep.err("tools/bench.lua", line[5:].strip())
+        if r.returncode != 0 and not any(l.startswith("ÉCHEC") for l in out):
+            rep.err("tools/bench.lua", "le banc d'essai a planté : " + " | ".join(out[-3:]))
+        summary = next((l for l in reversed(out) if l.startswith("Performance")), None)
+        if summary:
+            print(f"   {summary}")
+
 
 # ---------------------------------------------------------------------------
 CHECKS = {

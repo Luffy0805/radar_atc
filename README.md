@@ -34,10 +34,14 @@ Radar ATC runs as an application on the **laptop** mod. It allows an operator to
 
 Real-time radar view centred on the computer (or the remotely controlled airport).
 
-- Aircraft blips with position trail
-- Altitude in metres and feet on click
-- Full aircraft details: owner, pilot, heading, speed, altitude, throttle, HP, fuel, range, distance
-- `UPD: HH:MM:SS` refresh indicator at the bottom
+- Aircraft blips (◆) with position trail and a **speed vector**: dotted line to where the aircraft will be in 30 s
+- ATC **data block** next to each aircraft: callsign, flight level (from FL010) or altitude, ground speed in knots, ↑/↓ when climbing or descending; blocks are placed so that they do not overlap
+- **Conflict alert**: two moving aircraft closer than 150 m horizontally and 50 m vertically turn magenta, with a warning in the side panel
+- Range rings at 1/3 and 2/3 of the range, with their distance
+- Full aircraft details on click: owner, pilot, heading, speed, altitude, throttle, HP, fuel, range, distance
+- Refresh interval shown at the bottom (`↻ 3s`)
+
+Built not to lag: one shared aircraft scan for all laptops (at most once per second), nothing done while nobody stands near a laptop, and the screen is only resent to players when something visible changed.
 
 Ranges: 500 m, 750 m, 1 000 m, 1 500 m, 2 000 m, 3 000 m, 5 000 m
 

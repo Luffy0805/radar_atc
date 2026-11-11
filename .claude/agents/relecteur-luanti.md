@@ -29,9 +29,9 @@ Ce qu'on te demande de relire. À défaut : les modifications non commitées (`g
 
 **Persistance** : changement de forme d'une table sauvegardée (`airports_v5`, `indep_strips_v1`, `atc_<ID>`, `notam_<ID>`, `atclog_<ID>`, `passwords_v1`) sans prise en charge de l'ancien format (voir `.claude/skills/stockage/SKILL.md`) ; liste stockée sans limite.
 
-**airutils et laptop** : nouveau champ d'entité lu sans garde-fou ni ajout à la liste de CLAUDE.md ; condition « est un avion » modifiée dans scan.lua sans commands.lua, ou l'inverse ; modèle ajouté à `AUTONOMY_DIVISORS` sans la liste dupliquée d'ui_tabs.lua.
+**airutils et laptop** : nouveau champ d'entité lu sans garde-fou ni ajout à la liste de CLAUDE.md ; condition « est un avion » modifiée dans scan.lua sans commands.lua, ou l'inverse ; ObjectRef ou table d'entité copiés dans un avion relevé par `sample()` (la liste finit dans la RAM du laptop, sérialisée).
 
-**Performance** : travail ajouté dans `on_timer` / `scan()` (toutes les `CFG.timer_interval` secondes par laptop ouvert, rayon jusqu'à 5000 m), dans un `on_step` d'entité ou dans `build_fs` ; `find_nodes_in_area` sur un grand volume (limite de 4 096 000 nœuds) ou dans un chemin fréquent.
+**Performance** : texte qui change tout seul d'un tick à l'autre dans un formspec (horloge, âge en secondes) : l'écran entier est alors renvoyé à chaque joueur proche toutes les 3 s ; travail ajouté dans `on_timer`, `formspec_func`, `build_fs` ou un `on_step` d'entité (rotation : `automatic_rotate`, pas `set_rotation` à chaque pas) ; `get_objects_inside_radius` à grand rayon au lieu du suivi partagé (`radar_atc.tracker`) ; `find_nodes_in_area` hors de `node_in_cube()`. Vérifier avec `luajit tools/bench.lua` (avant/après) et `--check`.
 
 **Compatibilité** : Lua 5.1 (pas de `goto`, `//`, opérateurs bit à bit, `table.unpack`) ; fonction de l'API Luanti plus récente que la `min_minetest_version` de mod.conf (5.4).
 

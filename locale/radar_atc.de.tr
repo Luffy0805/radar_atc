@@ -128,7 +128,6 @@ approach request=Anfluganfrage
 sent=gesendet
 (no active tower)=(kein aktiver Tower)
 
-UPD: =AKT: 
 
 ASR Radar Antenna=ASR-Radarantenne
 ATC Link Antenna=ATC-Verbindungsantenne
@@ -233,3 +232,4 @@ Consult pilot notices (NOTAM) for an airport.@n  /notam <ID> -- shows NOTAM for 
 Identifier required.=Kennung erforderlich.
 Name required.=Name erforderlich.
 Note for pilots (optional):=Notiz für Piloten (optional):
+⚠ Conflict: @1 / @2 — @3 m=⚠ Konflikt: @1 / @2 — @3 m

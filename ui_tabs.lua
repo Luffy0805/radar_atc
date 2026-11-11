@@ -7,6 +7,84 @@
 -- =============================================================
 local S = minetest.get_translator("radar_atc")
 
+-- Single-colour label text: colour escape without the reset that clr()
+-- appends (the label ends there anyway) → shorter formspec.
+local function ce(col, text)
+    return minetest.get_color_escape_sequence(col) .. text
+end
+
+-- Flight level from FL010, metres below — same rounding as fmt_alt() in the
+-- aircraft card (to_fl), so both show the same level
+local function alt_tag(alt_m)
+    local fl = to_fl(alt_m)
+    if fl >= 10 then return string.format("FL%03d", fl) end
+    return math.floor(alt_m + 0.5) .. "m"
+end
+
+-- Moving aircraft closer than CFG.conflict_h horizontally and CFG.conflict_v
+-- vertically. Returns {[index] = true} and {{a = plane, b = plane, dh = m}, …}
+local function find_conflicts(planes)
+    local marked, list = {}, {}
+    for i = 1, #planes do
+        local a = planes[i]
+        if (a.spd_ms or 0) > 2 then
+            for j = i + 1, #planes do
+                local b = planes[j]
+                if (b.spd_ms or 0) > 2 and math.abs(a.pos.y - b.pos.y) < CFG.conflict_v then
+                    local dx, dz = a.pos.x - b.pos.x, a.pos.z - b.pos.z
+                    local dh = math.sqrt(dx * dx + dz * dz)
+                    if dh < CFG.conflict_h then
+                        marked[i], marked[j] = true, true
+                        list[#list + 1] = {a = a, b = b, dh = dh}
+                    end
+                end
+            end
+        end
+    end
+    return marked, list
+end
+
+-- Data block placement: tries right-up, left-up, right-down, left-down of
+-- the aircraft and takes the first spot inside the radar that does not
+-- overlap a block already placed (aircraft in conflict are close together).
+local BLOCK_W, BLOCK_H = 1.45, 0.72
+local function block_spot(placed, sx, sy)
+    local RW, RH = CFG.RW, CFG.RH
+    local fallback
+    for _, c in ipairs({{sx + 0.15, sy - 0.49}, {sx - 1.55, sy - 0.49},
+                        {sx + 0.15, sy + 0.20}, {sx - 1.55, sy + 0.20}}) do
+        local lx, ly = c[1], c[2]
+        if lx >= 0.02 and lx + BLOCK_W <= RW and ly >= 0.02 and ly + BLOCK_H <= RH then
+            fallback = fallback or c
+            local clash = false
+            for _, r in ipairs(placed) do
+                if lx < r[1] + BLOCK_W and r[1] < lx + BLOCK_W
+                   and ly < r[2] + BLOCK_H and r[2] < ly + BLOCK_H then clash = true; break end
+            end
+            if not clash then placed[#placed + 1] = c; return lx, ly end
+        end
+    end
+    local c = fallback or {math.max(0.02, math.min(RW - BLOCK_W, sx + 0.15)),
+                           math.max(0.02, math.min(RH - BLOCK_H, sy - 0.49))}
+    placed[#placed + 1] = c
+    return c[1], c[2]
+end
+
+-- Dotted line between two radar-screen points: about one dot every 0.25
+-- unit, at most max_dots + 1 dots; dots off the screen are dropped.
+local function dotted(fs, x1, y1, x2, y2, esc, max_dots, skip_first)
+    local RX, RY, RW, RH = CFG.RX, CFG.RY, CFG.RW, CFG.RH
+    local len = math.sqrt((x2 - x1) ^ 2 + (y2 - y1) ^ 2)
+    local n = math.max(1, math.min(max_dots, math.floor(len / 0.25 + 0.5)))
+    for t = skip_first and 1 or 0, n do
+        local ix = x1 + (x2 - x1) * t / n
+        local iy = y1 + (y2 - y1) * t / n
+        if ix >= 0.02 and ix <= RW - 0.20 and iy >= 0.02 and iy <= RH - 0.20 then
+            fs[#fs + 1] = string.format("label[%.2f,%.2f;%s·]", RX + ix - 0.04, RY + iy - 0.08, esc)
+        end
+    end
+end
+
 function tab_radar(data, mtos)
     local cpos   = data.remote_center or data.center_pos or mtos.pos
     local radius = data.radius or CFG.default_radius
@@ -14,6 +92,7 @@ function tab_radar(data, mtos)
     local sel    = data.selected or 0
     local linked = data.active_airport or data.linked_airport
     local fs     = {}
+    local esc    = minetest.get_color_escape_sequence
 
     local RX, RY, RW, RH = CFG.RX, CFG.RY, CFG.RW, CFG.RH
     local PX, PW = CFG.PX, CFG.PW
@@ -33,58 +112,51 @@ function tab_radar(data, mtos)
 
     -- Compass rose
     local cx = RX + RW / 2; local cy = RY + RH / 2
-    table.insert(fs, string.format("label[%.2f,%.2f;%s]", cx - 0.08, RY + 0.05, clr("#335533", "N")))
-    table.insert(fs, string.format("label[%.2f,%.2f;%s]", cx - 0.08, RY + RH - 0.50, clr("#335533", "S")))
-    table.insert(fs, string.format("label[%.2f,%.2f;%s]", RX + 0.05, cy - 0.15, clr("#335533", "O")))
-    table.insert(fs, string.format("label[%.2f,%.2f;%s]", RX + RW - 0.28, cy - 0.15, clr("#335533", "E")))
+    table.insert(fs, string.format("label[%.2f,%.2f;%s]", cx - 0.08, RY + 0.05, ce("#335533", "N")))
+    table.insert(fs, string.format("label[%.2f,%.2f;%s]", cx - 0.08, RY + RH - 0.50, ce("#335533", "S")))
+    table.insert(fs, string.format("label[%.2f,%.2f;%s]", RX + 0.05, cy - 0.15, ce("#335533", "O")))
+    table.insert(fs, string.format("label[%.2f,%.2f;%s]", RX + RW - 0.28, cy - 0.15, ce("#335533", "E")))
     table.insert(fs, string.format("label[%.2f,%.2f;+]", cx - 0.05, cy - 0.12))
 
-    -- Distance marks: 4 cardinal points (no arcs)
+    -- Range rings at 1/3 and 2/3 of the range: 8 marks and their distance
+    -- (x and y screen scales differ, as in w2r)
+    local ring_esc = esc("#1a3d1a")
     for _, frac in ipairs({1/3, 2/3}) do
-        local r = RW / 2 * frac
-        for _, a in ipairs({0, 90, 180, 270}) do
+        local rx, ry = RW / 2 * frac, RH / 2 * frac
+        for a = 0, 315, 45 do
             local rad = math.rad(a)
-            table.insert(fs, string.format("label[%.2f,%.2f;%s]",
-                cx + math.sin(rad) * r - 0.04, cy - math.cos(rad) * r - 0.08, clr("#1a3d1a", "·")))
+            table.insert(fs, string.format("label[%.2f,%.2f;%s·]",
+                cx + math.sin(rad) * rx - 0.04, cy - math.cos(rad) * ry - 0.08, ring_esc))
         end
+        table.insert(fs, string.format("label[%.2f,%.2f;%s]",
+            cx + 0.08, cy - ry - 0.08, ce("#2a5a2a", math.floor(radius * frac + 0.5) .. "m")))
     end
 
     -- Scale
     table.insert(fs, string.format("label[%.2f,%.2f;%s]",
-        RX + 0.1, RY + RH - 0.45, clr("#335533", "R:" .. radius .. "m")))
+        RX + 0.1, RY + RH - 0.45, ce("#335533", "R:" .. radius .. "m")))
 
     -- Runways of ALL airports (only if within range)
-    local airports = get_airports()
     local ap_label_drawn = {}
-    for _, ap in ipairs(airports) do
+    for _, ap in ipairs(get_airports()) do
         local is_linked = (ap.id == linked)
-        local rw_col = is_linked and "#5566FF" or "#444466"
+        local rw_esc = esc(is_linked and "#5566FF" or "#444466")
         local nm_col = is_linked and "#9999FF" or "#666688"
-        if ap.runways then
-            for _, rw in ipairs(ap.runways) do
-                if rw.p1 and rw.p2 then
-                    local x1, y1, x2, y2 = clip_segment(rw.p1, rw.p2, cpos, radius)
-                    if x1 then
-                        for t = 0, 10 do
-                            local f = t / 10
-                            local ix = x1 + (x2 - x1) * f; local iy = y1 + (y2 - y1) * f
-                            if ix >= 0.02 and ix <= RW - 0.20 and iy >= 0.02 and iy <= RH - 0.20 then
-                                table.insert(fs, string.format("label[%.2f,%.2f;%s]",
-                                    RX + ix, RY + iy, clr(rw_col, "·")))
-                            end
-                        end
-                        local xm = (x1 + x2) / 2; local ym = (y1 + y2) / 2
-                        if xm >= 0.1 and xm <= RW - 0.5 and ym >= 0.1 and ym <= RH - 0.4 then
+        for _, rw in ipairs(ap.runways or {}) do
+            if rw.p1 and rw.p2 then
+                local x1, y1, x2, y2 = clip_segment(rw.p1, rw.p2, cpos, radius)
+                if x1 then
+                    dotted(fs, x1, y1, x2, y2, rw_esc, 10)
+                    local xm = (x1 + x2) / 2; local ym = (y1 + y2) / 2
+                    if xm >= 0.1 and xm <= RW - 0.5 and ym >= 0.1 and ym <= RH - 0.4 then
+                        table.insert(fs, string.format("label[%.2f,%.2f;%s]",
+                            RX + xm, RY + ym - 0.28, ce(nm_col, fe(rw.name or "?"))))
+                    end
+                    if not is_linked and not ap_label_drawn[ap.id] then
+                        if xm >= 0.1 and xm <= RW - 0.8 and ym >= 0.1 and ym <= RH - 0.6 then
                             table.insert(fs, string.format("label[%.2f,%.2f;%s]",
-                                RX + xm, RY + ym - 0.28, clr(nm_col, rw.name or "?")))
-                        end
-                        if not is_linked and not ap_label_drawn[ap.id] then
-                            if xm >= 0.1 and xm <= RW - 0.8 and ym >= 0.1 and ym <= RH - 0.6 then
-                                table.insert(fs, string.format("label[%.2f,%.2f;%s]",
-                                    RX + xm, RY + ym - 0.52,
-                                    minetest.colorize("#888888", fe("[" .. ap.id .. "]"))))
-                                ap_label_drawn[ap.id] = true
-                            end
+                                RX + xm, RY + ym - 0.52, ce("#888888", fe("[" .. ap.id .. "]"))))
+                            ap_label_drawn[ap.id] = true
                         end
                     end
                 end
@@ -92,81 +164,87 @@ function tab_radar(data, mtos)
         end
     end
 
-    -- Independent runways (no ATC, orange color)
-    local strips = get_strips()
-    for _, st in ipairs(strips) do
+    -- Independent runways (no ATC, orange)
+    local st_esc = esc("#CC8833")
+    for _, st in ipairs(get_strips()) do
         if st.p1 and st.p2 then
             local sx1, sy1, sx2, sy2 = clip_segment(st.p1, st.p2, cpos, radius)
             if sx1 then
-                for t = 0, 10 do
-                    local f = t / 10
-                    local ix = sx1 + (sx2 - sx1) * f
-                    local iy = sy1 + (sy2 - sy1) * f
-                    if ix >= 0.02 and ix <= RW - 0.20 and iy >= 0.02 and iy <= RH - 0.20 then
-                        table.insert(fs, string.format("label[%.2f,%.2f;%s]",
-                            RX + ix, RY + iy, clr("#CC8833", "·")))
-                    end
-                end
+                dotted(fs, sx1, sy1, sx2, sy2, st_esc, 10)
                 local xm = (sx1 + sx2) / 2; local ym = (sy1 + sy2) / 2
                 if xm >= 0.1 and xm <= RW - 0.5 and ym >= 0.1 and ym <= RH - 0.4 then
                     table.insert(fs, string.format("label[%.2f,%.2f;%s]",
-                        RX + xm, RY + ym - 0.28, clr("#CC8833", st.name or "?")))
+                        RX + xm, RY + ym - 0.28, st_esc .. fe(st.name or "?")))
                 end
             end
         end
     end
 
-    -- Other active radars
+    -- Other radars active in the last 30 s
+    local now, self_key = os.time(), pk(mtos.pos)
     for key, info in pairs(active_nodes) do
-        if key ~= pk(mtos.pos) and info.pos then
+        if key ~= self_key and info.pos and now - (info.t or 0) <= 30 then
             local sx, sy = w2r(info.pos, cpos, radius)
             if sx then
                 table.insert(fs, string.format("label[%.2f,%.2f;%s]",
-                    RX + sx - 0.08, RY + sy - 0.12, clr("#4488CC", "◈")))
+                    RX + sx - 0.08, RY + sy - 0.12, ce("#4488CC", "◈")))
             end
         end
     end
 
-    -- Aircraft + trails
+    -- Aircraft: trail, speed vector, symbol, data block
+    local conflict, conflicts = find_conflicts(planes)
+    local trails = radar_atc.tracker and radar_atc.tracker.trails or {}
+    local placed = {}
     for i, p in ipairs(planes) do
         local sx, sy = w2r(p.pos, cpos, radius)
         if sx then
+            local moving = p.spd_ms and p.spd_ms > 0.5
             local col
-            if i == sel then col = "#FFAA00"
+            if conflict[i] then col = "#FF44FF"
+            elseif i == sel then col = "#FFAA00"
             elseif p.has_req then col = "#FF3333"
-            elseif p.spd_ms and p.spd_ms > 0.5 then col = "#00FF44"
+            elseif moving then col = "#00FF44"
             else col = "#FFFFFF" end
+            local col_esc = esc(col)
 
-            for ti, tp in ipairs(p.trail or {}) do
+            -- Trail: older points are dimmer
+            for ti, tp in ipairs(trails[p.obj_id] or {}) do
                 local tx, ty = w2r(tp, cpos, radius)
                 if tx then
-                    local dim = math.floor(220 - (ti - 1) * 25)
+                    local dim = math.max(40, 220 - (ti - 1) * 25)
                     local tc
-                    if i == sel then
-                        tc = string.format("#%02X%02X00", dim, math.floor(dim * 0.67))
-                    elseif p.has_req then
-                        tc = string.format("#%02X0000", dim)
-                    elseif p.spd_ms and p.spd_ms > 0.5 then
-                        tc = string.format("#00%02X00", dim)
-                    else
-                        tc = string.format("#%02X%02X%02X", dim, dim, dim)
-                    end
-                    table.insert(fs, string.format("label[%.2f,%.2f;%s]",
-                        RX + tx - 0.05, RY + ty - 0.10, clr(tc, "o")))
+                    if conflict[i] then tc = string.format("#%02X00%02X", dim, dim)
+                    elseif i == sel then tc = string.format("#%02X%02X00", dim, math.floor(dim * 0.67))
+                    elseif p.has_req then tc = string.format("#%02X0000", dim)
+                    elseif moving then tc = string.format("#00%02X00", dim)
+                    else tc = string.format("#%02X%02X%02X", dim, dim, dim) end
+                    table.insert(fs, string.format("label[%.2f,%.2f;%so]",
+                        RX + tx - 0.05, RY + ty - 0.10, esc(tc)))
                 end
             end
 
-            table.insert(fs, string.format("label[%.2f,%.2f;%s]",
-                RX + sx - 0.07, RY + sy - 0.13, clr(col, "▲")))
-
-            local tag = p.model:sub(1, 5) .. "/" .. p.owner:sub(1, 6)
-            local lx = sx - 0.35
-            if lx < 0.05 then lx = sx + 0.10 end
-            if lx + 1.5 > RW then lx = sx - 1.5 end
-            if RY + sy - 0.52 > RY + 0.05 then
-                table.insert(fs, string.format("label[%.2f,%.2f;%s]",
-                    RX + lx, RY + sy - 0.52, clr(col, tag)))
+            -- Speed vector: dotted line to the position in CFG.lead_time seconds
+            if (p.spd_ms or 0) > 2 and p.vx then
+                local ahead = {x = p.pos.x + p.vx * CFG.lead_time, y = p.pos.y,
+                               z = p.pos.z + p.vz * CFG.lead_time}
+                local x1, y1, x2, y2 = clip_segment(p.pos, ahead, cpos, radius)
+                if x1 then dotted(fs, x1, y1, x2, y2, col_esc, 4, true) end
             end
+
+            -- Symbol (no orientation: the speed vector gives the heading)
+            table.insert(fs, string.format("label[%.2f,%.2f;%s◆]",
+                RX + sx - 0.07, RY + sy - 0.13, col_esc))
+
+            -- Data block right of the aircraft (left near the edge):
+            -- callsign / flight level or altitude, ground speed, climb
+            local climb = p.climb or 0
+            local line1 = (conflict[i] and "⚠ " or "") .. (p.pilot or p.owner or "?"):sub(1, 10)
+            local line2 = alt_tag(p.alt_m or 0) .. " " .. to_kt(p.spd_ms or 0) .. "kt"
+                .. (climb > 1 and " ↑" or (climb < -1 and " ↓" or ""))
+            local lx, ly = block_spot(placed, sx, sy)
+            table.insert(fs, string.format("label[%.2f,%.2f;%s]", RX + lx, RY + ly, col_esc .. fe(line1)))
+            table.insert(fs, string.format("label[%.2f,%.2f;%s]", RX + lx, RY + ly + 0.36, col_esc .. fe(line2)))
         end
     end
 
@@ -216,6 +294,16 @@ function tab_radar(data, mtos)
             n .. " contact" .. (n > 1 and "s" or ""))))
     py = py + 0.45
 
+    -- Conflict alert (at most 2 pairs listed)
+    for ci = 1, math.min(2, #conflicts) do
+        local c = conflicts[ci]
+        table.insert(fs, string.format("box[%.2f,%.2f;%.2f,0.38;#330033]", PX, py, PW))
+        table.insert(fs, string.format("label[%.2f,%.2f;%s]", PX + 0.12, py - 0.02,
+            ce("#FF66FF", fe(S("⚠ Conflict: @1 / @2 — @3 m",
+                c.a.pilot or c.a.owner or "?", c.b.pilot or c.b.owner or "?", math.floor(c.dh + 0.5))))))
+        py = py + 0.44
+    end
+
     -- Selected aircraft info card
     if sel > 0 and planes[sel] then
         local p = planes[sel]
@@ -256,7 +344,7 @@ function tab_radar(data, mtos)
                 or S(" (stopped)")
             table.insert(rows, S("Range   : @1", clr(acolor, astr .. dist_str)
                 .. " (thr " .. p.throttle .. "%)"))
-        elseif p.throttle and p.throttle == 0 and (p.model == "PA-28" or p.model == "Super Cub" or p.model == "Super Duck Hydroplane" or p.model == "Ju 52 3M" or p.model == "Ju52 3M Hydroplane" or p.model == "trike") then
+        elseif p.throttle and p.throttle == 0 and p.autonomy_known then
             table.insert(rows, clr("#888888", S("Range   : engine off")))
         end
 
@@ -314,7 +402,7 @@ function tab_radar(data, mtos)
                        (p.has_req and "#FF6666" or
                        (p.pilot and "#AAFFAA" or "#FFFFFF"))
             local bg = (i == sel) and "#333300" or "#001500"
-            local line = string.format("%-6s %4dm %3dkt %dm%s",
+            local line = string.format("%s%-6s %4dm %3dkt %dm%s", conflict[i] and "⚠ " or "",
                 p.model:sub(1, 6), p.dist, to_kt(p.spd_ms), p.alt_m,
                 p.pilot and " [" .. p.pilot .. "]" or "")
             table.insert(fs, string.format("style[btn_sel_%d;bgcolor=%s]", i, bg))
@@ -324,9 +412,10 @@ function tab_radar(data, mtos)
         end
     end
 
+    -- Refresh interval (no clock: a clock would change the screen at every
+    -- tick and force laptop to resend it to every player around)
     table.insert(fs, string.format("label[%.2f,%.2f;%s]",
-        RX + 0.10, RY + RH - 0.08,
-        clr("#335533", S("UPD: ") .. os.date("%H:%M:%S") .. "  T+" .. CFG.timer_interval .. "s")))
+        RX + 0.10, RY + RH - 0.08, ce("#335533", "↻ " .. CFG.timer_interval .. "s")))
 
     return table.concat(fs)
 end
@@ -740,7 +829,9 @@ function tab_atc(data, mtos)
             local ap_obj_req = find_ap(req.airport)
             local ap_name_req = ap_obj_req and ap_obj_req.name or (req.airport or "?")
 
-            local age_str = age < 60 and (age .. "s") or (math.floor(age / 60) .. "min " .. age % 60 .. "s")
+            -- In minutes: an age in seconds would change the screen at every
+            -- tick and force laptop to resend it to every player around
+            local age_str = age < 60 and "<1 min" or (math.floor(age / 60) .. " min")
             local title = string.format("[%d]%s %s (%s) -> %s  |  %s  |  " .. S("ago @1", age_str),
                 ri, stat, req.player, req.model or "?", ap_name_req, det)
             table.insert(fs, string.format("box[0,%.2f;%.2f,0.50;%s]", rpy, CFG.X_MAX, bg))

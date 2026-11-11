@@ -11,6 +11,7 @@
 CFG
 
 # init.lua
+radar_atc        # espace de noms du mod (radar_atc.tracker : suivi des avions, scan.lua)
 active_nodes
 
 # storage.lua

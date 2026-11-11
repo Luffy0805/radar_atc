@@ -57,6 +57,11 @@ CFG = {
     -- [SETTING] Aircraft trail length (number of stored positions)
     trail_len       = num("trail_len",       5, 0, 50),
 
+    -- Radar display (not settings)
+    lead_time  = 30,    -- s: the speed vector ends at the position in 30 s
+    conflict_h = 150,   -- m: two moving aircraft closer than this horizontally…
+    conflict_v = 50,    -- m: …and than this vertically are shown in conflict
+
 
     -- =========================================================
     --  AIRPORTS

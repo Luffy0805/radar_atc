@@ -93,10 +93,23 @@ end
 -- ─────────────────────────────────────────────────────────────
 --  OFFSETS (mesh pivot adjustments)
 -- ─────────────────────────────────────────────────────────────
-local BASE_Y      = -1.00
-local DISH_Y      =  3.00
-local WAKE_RADIUS = 48
-local SLEEP_CHECK =  2.0
+local BASE_Y       = -1.00
+local DISH_Y       =  3.00
+local ORPHAN_CHECK =  2.0   -- s between two "is my node still there?" checks
+
+-- on_step shared by the decoration entities: removes the entity when its
+-- anchor node is gone (e.g. removed without on_destruct, by WorldEdit).
+-- Checked every ORPHAN_CHECK s instead of every server step.
+local function orphan_step(nodename)
+    return function(self, dtime)
+        self._check = (self._check or 0) + dtime
+        if self._check < ORPHAN_CHECK then return end
+        self._check = 0
+        if self._node_pos and minetest.get_node(self._node_pos).name ~= nodename then
+            self.object:remove()
+        end
+    end
+end
 
 -- =============================================================
 --  BASE ENTITY (fixed, no rotation)
@@ -109,56 +122,25 @@ minetest.register_entity("radar_atc:radar_base_entity", {
     },
     _node_pos = nil,
     on_activate = function(self) self.object:set_armor_groups({immortal=1}) end,
-    on_step = function(self)
-        if self._node_pos then
-            if minetest.get_node(self._node_pos).name ~= "radar_atc:transponder" then
-                self.object:remove()
-            end
-        end
-    end,
-    on_deactivate = function(self) end,
+    on_step = orphan_step("radar_atc:transponder"),
 })
 
 -- =============================================================
 --  DISH ENTITY (rotating)
+--  automatic_rotate: the client turns the dish by itself. It used to be
+--  turned by the server with set_rotation() at every server step, which
+--  sent a rotation update to every player around ~10 times per second.
 -- =============================================================
 minetest.register_entity("radar_atc:radar_dish", {
     initial_properties = {
         physical=false, collide_with_objects=false, pointable=false,
         static_save=false, visual="mesh", mesh="radar_dish.obj",
         textures={"radar_dish_palette.png"}, visual_size={x=10,y=10,z=10}, glow=0,
+        automatic_rotate = CFG.transponder_rotation_speed,
     },
-    _node_pos    = nil,
-    _yaw         = 0,
-    _sleep_timer = 0,
-    _sleeping    = false,
-
+    _node_pos = nil,
     on_activate = function(self) self.object:set_armor_groups({immortal=1}) end,
-
-    on_step = function(self, dtime)
-        if self._node_pos then
-            if minetest.get_node(self._node_pos).name ~= "radar_atc:transponder" then
-                self.object:remove(); return
-            end
-        end
-        if self._sleeping then
-            self._sleep_timer = self._sleep_timer + dtime
-            if self._sleep_timer < SLEEP_CHECK then return end
-            self._sleep_timer = 0
-        end
-        local pos = self.object:get_pos()
-        if not pos then return end
-        local player_near = false
-        for _, obj in ipairs(minetest.get_objects_inside_radius(pos, WAKE_RADIUS)) do
-            if obj:is_player() then player_near = true; break end
-        end
-        if not player_near then self._sleeping = true; return end
-        self._sleeping = false
-        local speed = CFG.transponder_rotation_speed or 0.4
-        self._yaw = (self._yaw + speed * dtime) % (2 * math.pi)
-        self.object:set_rotation({x=0, y=self._yaw, z=0})
-    end,
-    on_deactivate = function(self) end,
+    on_step = orphan_step("radar_atc:transponder"),
 })
 
 -- =============================================================
@@ -419,14 +401,7 @@ minetest.register_entity("radar_atc:link_antenna_entity", {
     },
     _node_pos = nil,
     on_activate = function(self) self.object:set_armor_groups({immortal=1}) end,
-    on_step = function(self)
-        if self._node_pos then
-            if minetest.get_node(self._node_pos).name ~= "radar_atc:link_antenna" then
-                self.object:remove()
-            end
-        end
-    end,
-    on_deactivate = function(self) end,
+    on_step = orphan_step("radar_atc:link_antenna"),
 })
 
 local LINK_PIVOT_Y = - 0.5    -- mesh bottom pivot = anchor node level

@@ -34,8 +34,8 @@ Indique toujours la version vérifiée (commit, tag ou date).
 | `laptop.register_app{app_name, app_icon, app_info, formspec_func, receive_fields_func, on_timer}`, `laptop.os_get(pos)`, `mtos.bdev:get_app_storage('ram', nom)`, `mtos:save()`, `mtos.pos`, `app:get_timer()` | init.lua, storage.lua, commands.lua | cadre de l'application laptop |
 
 ## Points d'attention
-- **Convention de cap** : déterminer comment airutils déplace l'avion à partir de `_yaw` (`minetest.yaw_to_dir`, calcul de vitesse…) et en déduire si `yaw2head(y) = (deg(y) + 180) % 360` donne le vrai cap (convention Luanti : yaw 0 = vers +Z = nord, sens antihoraire). Le mod contient déjà une incohérence nord/sud connue dans `bearing()` pour les pistes : dire si `yaw2head` a le même défaut.
-- **Nouveaux avions** : lister tous les `_vehicle_name` des avions d'apercy avec leur `_fuel_consumption_divisor`, et comparer à `AUTONOMY_DIVISORS` (scan.lua) et à la liste dupliquée de `tab_radar` (ui_tabs.lua).
+- **Convention de cap** : déterminer comment airutils déplace l'avion à partir de `_yaw` (`minetest.yaw_to_dir`, calcul de vitesse…) et en déduire si `yaw2head(y) = (deg(y) + 180) % 360` donne le vrai cap (convention Luanti : yaw 0 = vers +Z = nord, sens antihoraire). `bearing()` a été corrigé en 1.1.1 (il inversait nord et sud) : dire si `yaw2head` a un défaut comparable.
+- **Nouveaux avions** : lister tous les `_vehicle_name` des avions d'apercy avec leur `_fuel_consumption_divisor`, et comparer à `AUTONOMY_DIVISORS` (scan.lua).
 - **Changements récents** : `git log` des dépôts clonés sur les fichiers concernés, pour dater un renommage.
 
 ## Rapport (en français)

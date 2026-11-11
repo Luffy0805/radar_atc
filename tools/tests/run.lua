@@ -49,9 +49,16 @@ minetest.deserialize = function(s) return SERIAL[tonumber(s:sub(2))] end
 local MODS_LOADED = {}
 minetest.register_on_mods_loaded = function(fn) MODS_LOADED[#MODS_LOADED + 1] = fn end
 
+-- Entités actives et horloge pour le suivi des avions (scan.lua)
+local US = 0                                    -- horloge simulée, en µs
+minetest.get_us_time = function() return US end
+minetest.luaentities = {}
+radar_atc = {}
+
 dofile(ROOT .. "config.lua")
 dofile(ROOT .. "storage.lua")
 dofile(ROOT .. "utils.lua")
+dofile(ROOT .. "scan.lua")
 local storage_get_airports = get_airports
 
 -- ---- Mini-cadre de test
@@ -227,6 +234,91 @@ test("transponder_ok : pas de fouille du monde à chaque rafraîchissement (lag 
     for k, v in pairs(saved) do minetest[k] = v end
     get_airports = saved_ap
     assert(ok, err)
+end)
+
+-- ---- Suivi des avions (scan.lua)
+-- Entité simulée : pour une entité qui n'est pas un avion, la lecture de
+-- _vehicle_name est comptée (= entité examinée par le suivi)
+local reads = 0
+local function entity(fields, pos, vel)
+    local obj = {p = pos, v = vel or {x = 0, y = 0, z = 0}}
+    function obj:get_pos() return self.p and {x = self.p.x, y = self.p.y, z = self.p.z} end
+    function obj:get_velocity() return self.v end
+    local vehicle = fields._vehicle_name
+    fields._vehicle_name = nil
+    fields.object = obj
+    return setmetatable(fields, {__index = function(_, k)
+        if k == "_vehicle_name" then
+            if vehicle == nil then reads = reads + 1 end
+            return vehicle
+        end
+    end})
+end
+local function plane(pilot, pos, vel)
+    return entity({_vehicle_name = "PA-28", _max_plane_hp = 50, driver_name = pilot,
+                   owner = pilot, _yaw = 0, hp_max = 50}, pos, vel)
+end
+
+test("suivi : un seul parcours des entités pour plusieurs laptops dans la même seconde", function()
+    minetest.luaentities = {
+        [1] = plane("a", {x = 100, y = 50, z = 0}, {x = 30, y = 0, z = 0}),
+        [2] = entity({name = "__builtin:item"}, {x = 5, y = 0, z = 5}),
+        [3] = entity({name = "mob"}, {x = 9, y = 0, z = 9}),
+    }
+    US = US + 10 * 1000000
+    reads = 0
+    for _ = 1, 3 do scan(O, 1000) end               -- 3 laptops, même seconde
+    eq(reads, 2, "les 2 entités au sol examinées une seule fois")
+    US = US + 1100000                               -- 1,1 s plus tard
+    scan(O, 1000)
+    eq(reads, 4, "nouveau parcours après TRACK_INTERVAL")
+end)
+
+test("scan : rayon, tri par distance, demande ATC, avion sans pilote ignoré", function()
+    minetest.luaentities = {
+        [10] = plane("loin",  {x = 2000, y = 80, z = 0}),
+        [11] = plane("pres",  {x = 300,  y = 80, z = 0}),
+        [12] = plane("tout_pres", {x = 100, y = 80, z = 0}),
+        [13] = plane("",      {x = 50,   y = 80, z = 0}),   -- personne aux commandes
+    }
+    save_shared_atc("AP", {requests = {{player = "pres", req_type = "landing", time = 0}}, conversations = {}})
+    US = US + 10 * 1000000
+    local res = scan(O, 1000, nil, nil, "AP")
+    eq(#res, 2, "seuls les avions pilotés dans le rayon")
+    eq(res[1].pilot, "tout_pres", "le plus proche en premier")
+    eq(res[1].dist, 100)
+    eq(res[2].has_req, true, "demande ATC de « pres »")
+    eq(res[1].has_req, false)
+    eq(res[1].obj_id, "12")
+    eq(res[1].autonomy_known, true, "PA-28 : autonomie connue")
+end)
+
+test("traînées : un point par intervalle en vol, effacées à l'arrêt ou au départ de l'avion", function()
+    local e = plane("t", {x = 0, y = 80, z = 0}, {x = 30, y = 0, z = 0})
+    minetest.luaentities = {[20] = e}
+    local tr = radar_atc.tracker.trails
+    for k = 1, 4 do
+        US = US + CFG.timer_interval * 1000000
+        e.object.p = {x = 90 * k, y = 80, z = 0}
+        scan(O, 5000)
+    end
+    eq(#tr["20"], 3, "3 points après 4 relevés (le premier sert de départ)")
+    eq(tr["20"][1].x, 270, "le plus récent en premier")
+    for _ = 1, CFG.trail_len + 3 do
+        US = US + CFG.timer_interval * 1000000
+        scan(O, 5000)
+    end
+    eq(#tr["20"], CFG.trail_len, "limitée à trail_len")
+    e.object.v = {x = 0, y = 0, z = 0}
+    US = US + CFG.timer_interval * 1000000
+    scan(O, 5000)
+    eq(tr["20"], nil, "effacée à l'arrêt")
+    e.object.v = {x = 30, y = 0, z = 0}
+    US = US + CFG.timer_interval * 1000000; scan(O, 5000)
+    US = US + CFG.timer_interval * 1000000; scan(O, 5000)
+    minetest.luaentities = {}
+    US = US + CFG.timer_interval * 1000000; scan(O, 5000)
+    eq(tr["20"], nil, "oubliée quand l'avion disparaît")
 end)
 
 test("w2r : centre, est, nord en haut de l'écran, hors portée", function()

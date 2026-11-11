@@ -43,11 +43,15 @@ Affiche une vue radar en temps réel centrée sur la position de l'ordinateur (o
 
 **Éléments affichés :**
 - Cercle radar avec anneaux de distance
-- Avions sous forme de blips avec traînée (historique de position)
-- Altitude en mètres et pieds au survol
+- Avions sous forme de blips (◆) avec traînée et **vecteur vitesse** : pointillés jusqu'à la position de l'avion dans 30 s
+- **Étiquette ATC** à côté de chaque avion : indicatif, niveau de vol (à partir de FL010) ou altitude, vitesse sol en nœuds, ↑/↓ en montée ou en descente ; les étiquettes sont placées pour ne pas se chevaucher
+- **Alerte de conflit** : deux avions en mouvement à moins de 150 m l'un de l'autre et à moins de 50 m d'écart d'altitude passent en magenta, avec un avertissement dans le panneau latéral
+- Anneaux de distance à 1/3 et 2/3 de la portée, avec leur valeur
 - Liste des appareils en vol : propriétaire, pilote, cap, vitesse, altitude, gaz, PV, carburant, autonomie, distance
 - Indicateur d'aéroport lié et portée active
-- Indication `MAJ : HH:MM:SS` en bas du radar
+- Intervalle de rafraîchissement en bas du radar (`↻ 3s`)
+
+Conçu pour ne pas faire laguer : un seul relevé des avions partagé par tous les laptops (au plus une fois par seconde), rien n'est fait quand personne ne se tient près d'un laptop, et l'écran n'est renvoyé aux joueurs que si quelque chose de visible a changé.
 
 **Portées disponibles :** 500 m, 750 m, 1 000 m, 1 500 m, 2 000 m, 3 000 m, 5 000 m
 

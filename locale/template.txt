@@ -125,7 +125,6 @@ flyover at @1=
 approach request=
 sent=
 (no active tower)=
-UPD: =
 ASR Radar Antenna=
 ATC Link Antenna=
 Allows connection to any airport without password@nfrom a radar within @1 blocks.=
@@ -217,3 +216,4 @@ Consult pilot notices (NOTAM) for an airport.@n  /notam <ID> -- shows NOTAM for 
 Identifier required.=
 Name required.=
 Note for pilots (optional):=
+⚠ Conflict: @1 / @2 — @3 m=

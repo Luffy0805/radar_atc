@@ -17,16 +17,26 @@ function save_airports()
     ST:set_string("airports_v5", minetest.serialize(_ap_cache or {}))
 end
 
--- ATC state shared between all nodes of the same airport
+-- ATC state shared between all nodes of the same airport.
+-- Kept in memory after the first read: it used to be deserialized from
+-- mod_storage on every call (several times per redraw of every laptop).
+-- Callers modify the returned table, then call save_shared_atc().
+local _atc_cache = {}
+
 function get_shared_atc(airport_id)
     if not airport_id then return {requests={}, conversations={}} end
-    local r = ST:get_string("atc_" .. airport_id)
-    return (r ~= "" and minetest.deserialize(r))
-        or {requests={}, conversations={}}
+    local state = _atc_cache[airport_id]
+    if not state then
+        local r = ST:get_string("atc_" .. airport_id)
+        state = (r ~= "" and minetest.deserialize(r)) or {requests={}, conversations={}}
+        _atc_cache[airport_id] = state
+    end
+    return state
 end
 
 function save_shared_atc(airport_id, state)
     if not airport_id then return end
+    _atc_cache[airport_id] = state
     ST:set_string("atc_" .. airport_id, minetest.serialize(state))
     -- Notify all active nodes for this airport
     for _, info in pairs(active_nodes or {}) do

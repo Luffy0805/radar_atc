@@ -20,9 +20,8 @@ Avion demandé : $ARGUMENTS (si rien n'est indiqué, demander lequel et où trou
    - `_vehicle_name` : chaîne exacte, sensible à la casse, c'est la clé ;
    - `_fuel_consumption_divisor` : s'il est absent, l'avion hérite de la valeur par défaut d'airutils (700000 jusqu'ici, à revérifier dans le code d'airutils) ;
    - la présence de `_max_plane_hp` ou `_climb_rate`, de `_max_fuel`, `_energy`, `_power_lever`.
-3. Ajouter l'entrée dans `AUTONOMY_DIVISORS` (scan.lua) et dans le commentaire d'en-tête qui liste les modèles.
-4. Mettre à jour la **liste dupliquée** de `tab_radar` (ui_tabs.lua) : la condition `p.model == "PA-28" or …` qui affiche « Range : engine off ».
-   Mieux, avec l'accord de l'utilisateur : supprimer ce doublon une fois pour toutes, en ajoutant `has_autonomy = AUTONOMY_DIVISORS[e._vehicle_name] ~= nil` au résultat de `scan()` et en testant `p.has_autonomy` dans ui_tabs.lua (aucune nouvelle globale nécessaire).
+3. Ajouter l'entrée dans `AUTONOMY_DIVISORS` (scan.lua) et dans le commentaire d'en-tête qui liste les modèles. C'est tout : le suivi en déduit `autonomy_known`, qu'utilise ui_tabs.lua pour « Range : engine off » (il n'y a plus de liste dupliquée).
+4. Un nouveau champ d'entité à lire se lit dans `sample()` (scan.lua), une seule fois pour tous les laptops ; le copier dans l'avion relevé sous forme de donnée simple (jamais l'ObjectRef : la liste peut être enregistrée avec le laptop).
 5. Avion pas du tout détecté : comparer ses champs à la condition de détection. Si elle doit évoluer, modifier **scan.lua et commands.lua ensemble**.
 6. `python3 tools/check.py`.
 7. À tester en jeu : voler avec l'avion, le sélectionner sur le radar, comparer carburant et autonomie avec sa jauge, gaz à 0 → « moteur coupé », `/atc <ID> landing` accepté à bord.

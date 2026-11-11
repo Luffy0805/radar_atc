@@ -128,7 +128,6 @@ approach request=запрос на заход
 sent=отправлен
 (no active tower)=(нет активной вышки)
 
-UPD: =ОБН: 
 
 ASR Radar Antenna=Радарная антенна ASR
 ATC Link Antenna=Антенна связи УВД
@@ -233,3 +232,4 @@ Consult pilot notices (NOTAM) for an airport.@n  /notam <ID> -- shows NOTAM for 
 Identifier required.=Требуется идентификатор.
 Name required.=Требуется название.
 Note for pilots (optional):=Примечание для пилотов (необязательно):
+⚠ Conflict: @1 / @2 — @3 m=⚠ Конфликт: @1 / @2 — @3 м

@@ -402,9 +402,10 @@ minetest.register_chatcommand("atc", {
         save_shared_atc(aid, state)
         push_req(aid, req)
 
+        -- a tower is "active" if one of its laptops ran in the last minute
         local has = false
         for _, info in pairs(active_nodes) do
-            if info.airport_id == aid then has = true; break end
+            if info.airport_id == aid and os.time() - (info.t or 0) <= 60 then has = true; break end
         end
 
         local tf = {

@@ -52,6 +52,13 @@ Menu déroulant : par défaut, `fields.<nom>` contient le libellé de l'entrée 
 ## État
 `data` (= `mtos.bdev:get_app_storage('ram', 'radar')`) appartient au laptop, pas au joueur : plusieurs joueurs peuvent le partager, et `data._player_name` est le dernier qui a cliqué. Un état propre à un joueur s'indexe par son nom (`data._admin_ok[nom]`). Après un redémarrage, `data` peut être vide : toujours prévoir une valeur par défaut.
 
+## Ne pas faire laguer
+L'écran est stocké dans la métadonnée du laptop. Toutes les 3 s, laptop le reconstruit, et Luanti le renvoie **entier** à chaque joueur à moins de ~100 blocs dès qu'il diffère du précédent.
+- Rien ne doit changer tout seul d'un tick à l'autre : pas d'horloge, d'âge en secondes ni de compteur animé (âges en minutes).
+- Étiquette d'une seule couleur : `ce(couleur, texte)` (ui_tabs.lua) plutôt que `clr()`, plus court. Ligne pointillée : `dotted()`, qui proportionne le nombre de points à la longueur.
+- Un onglet qui n'a pas besoin d'être redessiné par le timer s'ajoute à la condition `idle` d'`on_timer` (init.lua) ; l'onglet Admin ne l'est jamais (la saisie serait perturbée).
+- Les avions viennent de `data.planes` (rafraîchi par `formspec_func`) et les traînées de `radar_atc.tracker.trails` : ne jamais parcourir le monde pendant le dessin.
+
 ## Vérifier
-1. `python3 tools/check.py fields i18n globals syntax` → 0 erreur.
+1. `python3 tools/check.py fields i18n globals syntax tests` → 0 erreur (`tests` inclut les seuils de performance de `tools/bench.lua --check`). Pour un changement de l'onglet Radar, comparer `luajit tools/bench.lua` avant et après.
 2. À indiquer à l'utilisateur pour le test en jeu : l'onglet s'affiche sans débordement ; le bouton agit ; une saisie survit à un redessin ; un texte contenant `[ ] ; ,` ne casse pas la vue ; un second joueur sur le même laptop ne voit pas l'état privé du premier.

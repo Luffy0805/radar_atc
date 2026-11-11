@@ -25,7 +25,6 @@ function do_fields(app, mtos, sender, fields)
     data.tab        = data.tab        or "radar"
     data.radius     = data.radius     or CFG.default_radius
     data.planes     = data.planes     or {}
-    data.trails     = data.trails     or {}
     data.center_pos = data.center_pos or {x=mtos.pos.x, y=mtos.pos.y, z=mtos.pos.z}
     data.selected   = data.selected   or 0
     data.av         = data.av         or "list"
@@ -85,10 +84,7 @@ function do_fields(app, mtos, sender, fields)
                         v = CFG.transponder_free_radius
                     end
                 end
-                data.radius = v; data.selected = 0
-                data.planes, data.trails = scan(
-                    data.remote_center or data.center_pos,
-                    data.radius, data.planes, data.trails, linked)
+                data.radius = v; data.selected = 0   -- planes refreshed when redrawn
             end
             return true
         end
