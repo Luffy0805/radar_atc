@@ -153,7 +153,6 @@ NOTAM header @1 @2=[ NOTAM @1 ] @2
 
 ### ATC decisions ###
 Wrong password.=Contraseña incorrecta.
-Request already in progress (retry in @1s)=Solicitud en curso (reintente en @1 s)
 Authorized=Autorizado
 Refused=Rechazado
 On hold=En espera

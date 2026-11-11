@@ -9,7 +9,6 @@
 
 # config.lua
 CFG
-REQ_STALE_AGE
 
 # init.lua
 active_nodes
@@ -50,14 +49,11 @@ pk
 rw_len
 rwy_name
 rwy_num
-scroll_bar
-scroll_box
 to_fl
 to_ft
 to_kmh
 to_kt
 w2r
-w2r_clamp
 yaw2head
 
 # transponder.lua
@@ -69,7 +65,6 @@ scan
 
 # ui_tabs.lua
 build_fs
-can_send_request
 tab_admin
 tab_atc
 tab_myairport

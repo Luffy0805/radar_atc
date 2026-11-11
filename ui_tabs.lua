@@ -1437,27 +1437,6 @@ function tab_admin(data, mtos)
     return table.concat(fs)
 end
 
--- =============================================================
---  ATC REQUEST HELPERS
--- =============================================================
-
--- Checks whether an aircraft can send a new request to an ATC.
--- Rule: forbidden if an identical request (same player+model+type)
--- exists and is still fresh (< CFG.req_stale_age seconds).
-function can_send_request(airport_id, player, model, req_type)
-    local state = get_shared_atc(airport_id)
-    local reqs  = state.requests or {}
-    local now   = os.time()
-    for _, r in ipairs(reqs) do
-        if r.player == player and (r.model or "") == (model or "") and r.req_type == req_type then
-            local age = now - (r.time or 0)
-            if age < CFG.req_stale_age then
-                return false, S("Request already in progress (retry in @1s)", CFG.req_stale_age - age)
-            end
-        end
-    end
-    return true
-end
 function build_fs(app, mtos)
     local data = mtos.bdev:get_app_storage('ram', 'radar')
     data.tab = data.tab or "radar"

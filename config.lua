@@ -122,6 +122,3 @@ CFG.RW      = 6.80
 CFG.PX      = CFG.RX + CFG.RW + 0.30
 CFG.PW      = CFG.X_MAX - CFG.PX
 CFG.TAB_END = CFG.TAB_Y + CFG.TAB_H
-
--- Alias for compatibility with can_send_request in ui_tabs.lua
-REQ_STALE_AGE = CFG.req_stale_age

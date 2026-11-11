@@ -170,28 +170,6 @@ function clip_segment(p1, p2, cp, radius)
            ax + t1 * dx, ay + t1 * dy
 end
 
--- Compat: kept to avoid breaking any existing calls.
--- Prefer clip_segment for drawing segments.
-function w2r_clamp(tp, cp, radius)
-    local dx = (tp.x - cp.x) / radius
-    local dz = -(tp.z - cp.z) / radius
-    local sx = CFG.RW / 2 + dx * CFG.RW / 2
-    local sy = CFG.RH / 2 + dz * CFG.RH / 2
-    local x0, y0 = CFG.RW / 2, CFG.RH / 2
-    local xmin, xmax = 0.05, CFG.RW - 0.25
-    local ymin, ymax = 0.05, CFG.RH - 0.25
-    if sx >= xmin and sx <= xmax and sy >= ymin and sy <= ymax then
-        return sx, sy
-    end
-    local rx, ry = sx - x0, sy - y0
-    local t = 1.0
-    if rx > 0 then t = math.min(t, (xmax - x0) / rx)
-    elseif rx < 0 then t = math.min(t, (xmin - x0) / rx) end
-    if ry > 0 then t = math.min(t, (ymax - y0) / ry)
-    elseif ry < 0 then t = math.min(t, (ymin - y0) / ry) end
-    return x0 + rx * t, y0 + ry * t
-end
-
 -- =============================================================
 --  FORMSPEC HELPERS
 -- =============================================================
@@ -208,14 +186,6 @@ function mkdd(x, y, w, name, items, sel_val, index_event)
     end
     return string.format("dropdown[%.2f,%.2f;%.2f,0.60;%s;%s;%d%s]",
         x, y, w, name, table.concat(strs, ","), idx, index_event and ";true" or "")
-end
-
-function scroll_box(x, y, w, h, name)
-    return string.format("scroll_container[%.2f,%.2f;%.2f,%.2f;%s;vertical]", x, y, w, h, name)
-end
-
-function scroll_bar(x, y, h, name)
-    return string.format("scrollbar[%.2f,%.2f;0.25,%.2f;vertical;%s;0]", x, y, h, name)
 end
 
 -- Position key (to identify a node in active_nodes)
