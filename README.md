@@ -142,7 +142,11 @@ Grants access to the password management panel in the Admin tab.
 
 ## Configuration
 
+All settings are listed with their description and bounds in **Settings → All settings → Mods → radar_atc** (`settingtypes.txt`), or can be set in `minetest.conf`:
+
 ```ini
+radar_atc.radar_password_admin = admin
+radar_atc.radar_password_remote = airport
 radar_atc.timer_interval = 3
 radar_atc.default_radius = 1000
 radar_atc.trail_len = 5
@@ -157,7 +161,7 @@ radar_atc.notam_max_lines = 10
 radar_atc.atc_log_max = 10
 ```
 
-`transponder_link_r` is capped at 79: above that, the search cube around the airport exceeds Luanti's limit of 4 096 000 nodes.
+Out-of-range or non-numeric values are brought back within bounds. `transponder_link_r` is capped at 79: above that, the search cube around the airport exceeds Luanti's limit of 4 096 000 nodes. A password changed in the Admin tab takes priority over the two password settings.
 
 ---
 

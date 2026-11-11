@@ -691,6 +691,20 @@ def check_i18n(rep, show_missing=False):
         text = msg if len(langs) == 1 else f"{msg} [{', '.join(langs)}]"
         (rep.err if kind == "err" else rep.warn)(loc, text)
 
+    # Modèle de traduction : toutes les chaînes du code, sans traduction
+    tpl = locale / "template.txt"
+    if not tpl.exists():
+        rep.warn("locale/template.txt", "modèle de traduction absent")
+    else:
+        t_entries, t_domain, _ = parse_tr(tpl, rep)
+        if t_domain != MODNAME:
+            rep.warn("locale/template.txt", f"en-tête '# textdomain: {MODNAME}' absent")
+        absent = sorted(k for k in src_keys if k not in t_entries)
+        extra = sorted(k for k in t_entries if k not in src_keys)
+        if absent or extra:
+            rep.warn("locale/template.txt", f"pas à jour : {len(absent)} chaîne(s) du code absente(s), "
+                     f"{len(extra)} chaîne(s) en trop — le régénérer à partir des chaînes du code")
+
     if show_missing:
         print()
         for lang, rel, missing in missing_out:
@@ -752,8 +766,13 @@ def check_meta(rep):
                                 "un upload a sans doute écrasé mod.conf")
 
     # Réglages lus dans config.lua -> documentés ?
+    # setting("cle", "défaut") | num("cle", défaut, min, max) | bool("cle", défaut)
     cfg = (ROOT / "config.lua").read_text(encoding="utf-8")
-    keys = re.findall(r"setting\(\s*\"([\w.]+)\"", cfg)
+    cfg_defs = {}
+    for fn, k, args in re.findall(r"\b(setting|num|bool)\(\s*\"([\w.]+)\"\s*,\s*([^()]*?)\)", cfg):
+        vals = [a.strip().strip('"') for a in args.split(",")]
+        cfg_defs[k] = (fn, vals)
+    keys = list(cfg_defs)
     docs = {"README.md": ROOT / "README.md", "README-FR.txt": ROOT / "README-FR.txt"}
     st = ROOT / "settingtypes.txt"
     for label, path in docs.items():
@@ -766,11 +785,48 @@ def check_meta(rep):
                 rep.warn(label, f"réglage '{MODNAME}.{k}' (config.lua) non documenté")
         for k in sorted(set(re.findall(rf"{MODNAME}\.([a-z_]+)\s*=", text)) - set(keys)):
             rep.warn(label, f"'{MODNAME}.{k}' documenté mais absent de config.lua")
-    if st.exists():
-        text = st.read_text(encoding="utf-8")
+    if not st.exists():
+        rep.warn("settingtypes.txt", "absent : les réglages n'apparaissent pas dans le menu Paramètres de Luanti")
+    else:
+        types = {"int", "float", "bool", "string", "enum", "path", "filepath", "key", "flags", "noise_params", "v3f"}
+        expect = {"num": ("int", "float"), "bool": ("bool",), "setting": ("string", "enum")}
+        declared = {}
+        for ln, line in enumerate(st.read_text(encoding="utf-8").split("\n"), 1):
+            if not line.strip() or line.lstrip().startswith(("#", "[")):
+                continue
+            m = re.match(r"^(\S+)\s+\(([^)]*)\)\s+(\w+)\s*(.*)$", line)
+            if not m or m.group(3) not in types:
+                rep.err(f"settingtypes.txt:{ln}", "ligne illisible : attendu « nom (Libellé) type défaut [min max] »")
+                continue
+            name, typ, rest = m.group(1), m.group(3), m.group(4).split()
+            if not name.startswith(MODNAME + "."):
+                rep.warn(f"settingtypes.txt:{ln}", f"'{name}' sans le préfixe {MODNAME}.")
+                continue
+            declared[name[len(MODNAME) + 1:]] = (ln, typ, rest)
         for k in keys:
-            if not re.search(rf"^{MODNAME}\.{k}\s", text, flags=re.M):
-                rep.warn("settingtypes.txt", f"réglage '{MODNAME}.{k}' absent")
+            if k not in declared:
+                rep.warn("settingtypes.txt", f"réglage '{MODNAME}.{k}' (config.lua) absent")
+                continue
+            ln, typ, rest = declared[k]
+            fn, vals = cfg_defs[k]
+            loc = f"settingtypes.txt:{ln}"
+            if typ not in expect[fn]:
+                rep.err(loc, f"'{k}' : type {typ}, mais config.lua le lit avec {fn}()")
+                continue
+            if typ in ("int", "float"):
+                st_vals, cfg_vals = rest[:3], vals[:3]
+                try:
+                    same = len(st_vals) == 3 and [float(v) for v in st_vals] == [float(v) for v in cfg_vals]
+                except ValueError:
+                    same = False
+                if not same:
+                    rep.err(loc, f"'{k}' : défaut/min/max {' '.join(st_vals)} ≠ config.lua {' '.join(cfg_vals)}")
+            else:
+                d = rest[0] if rest else ""
+                if d != vals[0]:
+                    rep.err(loc, f"'{k}' : défaut {d!r} ≠ config.lua {vals[0]!r}")
+        for k in sorted(set(declared) - set(keys)):
+            rep.warn(f"settingtypes.txt:{declared[k][0]}", f"'{MODNAME}.{k}' déclaré mais jamais lu par config.lua")
     for wrong in ("settingstype.conf", "settingtypes.conf", "settingstypes.txt"):
         if (ROOT / wrong).exists():
             rep.warn(wrong, "nom incorrect : Luanti ne lit que settingtypes.txt")

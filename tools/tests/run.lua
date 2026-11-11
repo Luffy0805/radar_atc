@@ -25,7 +25,8 @@ local function fake_translate(s, ...)
 end
 
 minetest = {
-    settings        = { get = function() return nil end },
+    settings        = { get = function() return nil end,
+                        get_bool = function(_, _, default) return default end },
     get_translator  = function() return fake_translate end,
     formspec_escape = function(s) return (tostring(s):gsub("[%[%];,\\]", "\\%0")) end,
     colorize        = function(_, text) return text end,
@@ -160,6 +161,31 @@ test("migration des noms de piste (ancien calcul en miroir nord/sud)", function(
     rws[1].name = "15R/33L"
     for _, fn in ipairs(MODS_LOADED) do fn() end
     eq(rws[1].name, "15R/33L", "la migration ne tourne qu'une fois")
+end)
+
+test("réglages : valeur non numérique → défaut, hors bornes → bornée, mots de passe lus", function()
+    local conf = {
+        ["radar_atc.timer_interval"]       = "abc",
+        ["radar_atc.transponder_link_r"]   = "500",
+        ["radar_atc.trail_len"]            = "-3",
+        ["radar_atc.radar_password_admin"] = "s3cret",
+    }
+    local saved = minetest.settings
+    minetest.settings = {
+        get      = function(_, k) return conf[k] end,
+        get_bool = function(_, k, d) if k == "radar_atc.transponder_enabled" then return false end return d end,
+    }
+    local ok, err = pcall(dofile, ROOT .. "config.lua")
+    local c = CFG
+    minetest.settings = saved
+    dofile(ROOT .. "config.lua")
+    assert(ok, err)
+    eq(c.timer_interval, 3, "timer_interval invalide")
+    eq(c.transponder_link_r, 79, "transponder_link_r plafonné")
+    eq(c.trail_len, 0, "trail_len borné à 0")
+    eq(c.radar_password_admin, "s3cret", "mot de passe admin")
+    eq(c.radar_password_remote, "airport", "mot de passe distant par défaut")
+    eq(c.transponder_enabled, false, "booléen lu")
 end)
 
 test("w2r : centre, est, nord en haut de l'écran, hors portée", function()

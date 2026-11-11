@@ -217,9 +217,13 @@ Permet de modifier les mots de passe depuis l'interface Admin.
 
 ---
 
-## Configuration (`minetest.conf`)
+## Configuration
+
+Tous les réglages sont listés, avec leur description et leurs bornes, dans **Paramètres → Tous les paramètres → Mods → radar_atc** (`settingtypes.txt`). On peut aussi les écrire dans `minetest.conf` :
 
 ```ini
+radar_atc.radar_password_admin = admin
+radar_atc.radar_password_remote = airport
 radar_atc.timer_interval = 3
 radar_atc.default_radius = 1000
 radar_atc.trail_len = 5
@@ -234,7 +238,7 @@ radar_atc.notam_max_lines = 10
 radar_atc.atc_log_max = 10
 ```
 
-`transponder_link_r` est plafonné à 79 : au-delà, le cube fouillé autour de l'aéroport dépasse la limite de Luanti (4 096 000 blocs).
+Une valeur hors bornes ou non numérique est ramenée dans les bornes. `transponder_link_r` est plafonné à 79 : au-delà, le cube fouillé autour de l'aéroport dépasse la limite de Luanti (4 096 000 blocs). Un mot de passe modifié dans l'onglet Admin est prioritaire sur les deux réglages de mot de passe.
 
 ---
 

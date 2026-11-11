@@ -29,7 +29,9 @@ Si `luajit` manque : `brew install luajit` (macOS) ou `sudo apt install luajit` 
 | i18n | échappement invalide dans un .tr | `\n` → `@n`, `\'` → `'` |
 | i18n | chaînes non traduites, clés obsolètes | skill `/traductions` |
 | meta | version inférieure à l'historique | remettre dans mod.conf au moins la plus haute version déjà publiée (un upload web a écrasé le fichier) |
-| meta | réglage non documenté | README.md **et** README-FR.txt |
+| meta | réglage non documenté | README.md **et** README-FR.txt, plus une ligne dans settingtypes.txt |
+| meta | défaut/min/max ≠ config.lua | aligner settingtypes.txt sur `num(...)` dans config.lua (ou l'inverse) |
+| i18n | template.txt pas à jour | régénérer `locale/template.txt` : `# textdomain: radar_atc` puis une ligne `clé=` par chaîne du code |
 | tests | ÉCHEC | régression : corriger le code, pas le test, sauf si le comportement attendu a changé |
 | tests | BUG CONNU | bug documenté, pas encore corrigé ; quand il passe, transformer `bug_connu(...)` en `test(...)` |
 
