@@ -188,6 +188,47 @@ test("réglages : valeur non numérique → défaut, hors bornes → bornée, mo
     eq(c.transponder_enabled, false, "booléen lu")
 end)
 
+test("transponder_ok : pas de fouille du monde à chaque rafraîchissement (lag serveur)", function()
+    -- API simulée pour charger transponder.lua ; compte les find_nodes_in_area
+    local finds, loaded, nodes_found = 0, true, {}
+    local noop = function() end
+    local saved = {}
+    for _, k in ipairs({"register_entity", "register_node", "register_lbm", "register_craftitem",
+                        "register_craft", "get_modpath", "find_nodes_in_area", "get_node_or_nil"}) do
+        saved[k] = minetest[k]
+    end
+    minetest.register_entity, minetest.register_node, minetest.register_lbm = noop, noop, noop
+    minetest.register_craftitem, minetest.register_craft = noop, noop
+    minetest.get_modpath = function() return nil end
+    minetest.find_nodes_in_area = function() finds = finds + 1; return nodes_found end
+    minetest.get_node_or_nil = function() return loaded and {name = "air"} or nil end
+    local saved_ap = get_airports
+    local airports = { {id = "AP", pos = {x = 0, y = 0, z = 0}, has_transponder = false} }
+    get_airports = function() return airports end
+    local ok, err = pcall(function()
+        dofile(ROOT .. "transponder.lua")
+        local laptop_pos = {x = 30, y = 0, z = 0}         -- à 30 m de l'aéroport
+        local far = CFG.transponder_free_radius + 1
+        eq(transponder_ok(laptop_pos, far), false, "pas de transpondeur")
+        for _ = 1, 20 do transponder_ok(laptop_pos, far) end   -- 20 rafraîchissements
+        eq(finds, 1, "une seule fouille pendant SEARCH_TTL")
+        eq(transponder_ok(laptop_pos, CFG.transponder_free_radius), true, "portée libre")
+        eq(finds, 1, "portée libre : aucune fouille")
+        loaded = false
+        transponder_ok({x = 9000, y = 0, z = 9000}, far)      -- contrôle à distance, zone non chargée
+        eq(finds, 1, "zone non chargée : aucune fouille (pas de chargement depuis le disque)")
+        loaded = true
+        airports[1].has_transponder = true
+        eq(transponder_ok(laptop_pos, far), true, "drapeau de l'aéroport le plus proche")
+        eq(finds, 1, "drapeau : aucune fouille")
+        link_antenna_ok(laptop_pos); link_antenna_ok(laptop_pos)
+        eq(finds, 2, "antenne de liaison : une fouille, puis le cache")
+    end)
+    for k, v in pairs(saved) do minetest[k] = v end
+    get_airports = saved_ap
+    assert(ok, err)
+end)
+
 test("w2r : centre, est, nord en haut de l'écran, hors portée", function()
     local sx, sy = w2r(O, O, 1000)
     near(sx, CFG.RW / 2); near(sy, CFG.RH / 2)

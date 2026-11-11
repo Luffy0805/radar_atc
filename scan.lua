@@ -47,13 +47,15 @@ local function calc_autonomy(e)
     return math.floor(e._energy / conso_sec / 60 + 0.5)
 end
 
-local function has_atc_request(player_name, airport_id)
-    if not airport_id then return false end
-    local state = get_shared_atc(airport_id)
-    for _, r in ipairs(state.requests or {}) do
-        if r.player == player_name then return true end
+-- Players who have a request at the airport, read once per scan
+-- (get_shared_atc deserializes mod storage on every call)
+local function players_with_request(airport_id)
+    local set = {}
+    if not airport_id then return set end
+    for _, r in ipairs(get_shared_atc(airport_id).requests or {}) do
+        if r.player then set[r.player] = true end
     end
-    return false
+    return set
 end
 
 function scan(cpos, radius, old, trails, active_ap)
@@ -66,6 +68,7 @@ function scan(cpos, radius, old, trails, active_ap)
     end
 
     local res = {}
+    local requesters = players_with_request(active_ap)
     local objs = core.get_objects_inside_radius(cpos, radius)
     for _, obj in ipairs(objs) do
         if not obj:is_player() then
@@ -101,7 +104,7 @@ function scan(cpos, radius, old, trails, active_ap)
                         throttle = e._power_lever and math.floor(e._power_lever + 0.5) or nil,
                         autonomy_min = calc_autonomy(e),
                         dist     = d2d(cpos, pos),
-                        has_req  = (active_pilot and has_atc_request(active_pilot, active_ap)) or false,
+                        has_req  = (active_pilot and requesters[active_pilot]) or false,
                     }
                     local src = trails[obj_id] or {}
                     local tr  = {}

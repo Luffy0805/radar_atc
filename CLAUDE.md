@@ -74,12 +74,13 @@ API laptop utilisée : `laptop.register_app`, `laptop.os_get(pos)`, `mtos.bdev:g
 
 **Globales** : toute nouvelle globale doit être voulue et déclarée dans `tools/known_globals.txt`, sinon `check.py globals` échoue. Préférer `local`. Des noms courts comme `scan`, `fe`, `clr` ou `pk` peuvent entrer en conflit avec d'autres mods : préfixer les nouveaux.
 
-**Réglages** : en ajouter un = (1) `setting("cle", "défaut")` dans `CFG` (config.lua), (2) le bloc « Configuration » de README.md **et** de README-FR.txt, (3) `settingtypes.txt` s'il existe (c'est le seul nom de fichier que Luanti lit). `check.py meta` signale les réglages non documentés.
+**Réglages** : en ajouter un = (1) dans `CFG` (config.lua) : `num("cle", défaut, min, max)` pour un nombre (valeur invalide → défaut, puis bornée), `bool("cle", défaut)` ou `setting("cle", "défaut")` pour un texte ; (2) une ligne dans `settingtypes.txt` (seul nom de fichier que Luanti lit, affiché dans Paramètres → Tous les paramètres → Mods) avec **le même défaut et les mêmes bornes** ; (3) le bloc « Configuration » de README.md **et** de README-FR.txt. `check.py meta` compare config.lua et settingtypes.txt et signale les réglages non documentés.
 
 ## Pièges connus
 - **Uploads par le site GitHub** : ils ont déjà écrasé `mod.conf` (version revenue de 1.1.0 à 1.0.5, deux fois) et déposé des `.tr` à la racine. Après chaque upload, relancer `python3 tools/check.py` ; `check.py meta` détecte une version qui recule.
 - `find_nodes_in_area` est limité à 4 096 000 nœuds (= 160³) : un cube de rayon r en compte (2r+1)³. C'est pourquoi `transponder_link_r` est plafonné à 79 dans config.lua ; tout nouveau rayon de recherche doit l'être aussi.
-- `on_timer` tourne toutes les 3 s par laptop ouvert et `scan()` couvre jusqu'à 5000 m : n'y ajouter rien de coûteux.
+- `on_timer` tourne toutes les 3 s par laptop ouvert, et le formspec est **redessiné à chaque fois** : `build_fs()` et les onglets sont aussi coûteux que le timer. `scan()` couvre jusqu'à 5000 m : n'y ajouter rien de coûteux.
+- **Lag serveur jusqu'au redémarrage (corrigé en 1.1.1)** : `transponder_ok()` lançait `find_nodes_in_area` sur 3,4 millions de blocs à chaque rafraîchissement de l'onglet Radar, et chargeait depuis le disque environ 1 000 mapblocks en contrôle à distance. Ne jamais appeler `find_nodes_in_area` dans un chemin de dessin ou de timer : passer par `node_in_cube()` (transponder.lua), qui garde le résultat en cache 60 s et ne fouille pas une zone non chargée. Le test « transponder_ok » de `tools/tests/run.lua` compte les fouilles.
 - `minetest.get_node` renvoie `ignore` en zone non chargée ; `get_luaentity()` et `get_player_by_name()` peuvent renvoyer nil.
 - Convention de cap du mod : +X = est, +Z = nord, cap = `atan2(dx, dz)`, partout (`bearing()`, `/atc navigate`, radar). Jusqu'à 1.1.0, `bearing()` inversait nord et sud : les pistes en diagonale déjà enregistrées sont renommées une fois au démarrage (storage.lua, drapeau `rwy_names_fixed_v1`).
 

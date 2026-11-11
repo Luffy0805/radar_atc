@@ -25,6 +25,7 @@ Forme typique :
 | erreur dans `scan()` ou `in_aircraft` | champ airutils absent ou renommé (agent `compat-airutils`) ; `get_luaentity()` ou `get_pos()` nil |
 | `Not enough arguments`, `Too many arguments` ou `not in the correct order` (core.translate) | marqueurs `@N` de `S()` incohérents, détectés par `check.py i18n` |
 | `attempt to concatenate a nil value` dans un `S()` | argument nil passé à `S()` (ex. `p.throttle`) |
+| serveur qui rame de plus en plus, redémarrage nécessaire | travail lourd dans un chemin de dessin ou de timer (formspec redessiné toutes les 3 s par laptop) : `find_nodes_in_area` hors de `node_in_cube()`, `get_shared_atc()` dans une boucle, `get_objects_inside_radius` à grand rayon |
 | `area volume exceeds allowed value` | `find_nodes_in_area` sur un cube de rayon ≥ 80 (`transponder_link_r` est plafonné à 79 : chercher un autre rayon non borné) |
 | avertissement `Undeclared global variable` | faute de frappe ou `local` manquant, détecté par `check.py globals` |
 | bouton sans effet | traitement absent de fields.lua, ou placé dans le mauvais bloc `data.tab`, détecté par `check.py fields` |
